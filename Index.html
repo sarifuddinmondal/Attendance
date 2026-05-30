@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Attendance & OT Tracker</title>
+    <!-- Font Awesome Icon er jonne -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #4338ca;
+            --background: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #4b5563;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+
+        /* Form Layout */
+        .card {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        input, select {
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 15px;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--primary-color);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 11px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        /* Table & Action Section */
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .table-header h3 {
+            margin: 0;
+        }
+
+        .download-btn {
+            background-color: #10b981;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .download-btn:hover {
+            background-color: #059669;
+        }
+
+        .table-wrapper {
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 14px 18px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background-color: #f9fafb;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 5px;
+            font-size: 16px;
+        }
+        
+        .delete-btn:hover {
+            color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2><i class="fa-solid fa-business-time"></i> Daily Attendance & OT Tracker</h2>
+
+    <!-- Attendance Input Form -->
+    <div class="card">
+        <form id="attendanceForm" class="form-grid">
+            <div class="form-group">
+                <label for="date">Date</label>
+                <input type="date" id="date" required>
+            </div>
+
+            <div class="form-group">
+                <label for="shift">Shift</label>
+                <select id="shift" required>
+                    <option value="Day">Day</option>
+                    <option value="Night">Night</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="hours">Duty Hours</label>
+                <input type="number" id="hours" min="1" max="24" placeholder="e.g. 8 or 12" required>
+            </div>
+
+            <button type="submit"><i class="fa-solid fa-plus"></i> Add Entry</button>
+        </form>
+    </div>
+
+    <!-- Attendance Report Table -->
+    <div class="table-header">
+        <h3>Attendance Logs</h3>
+        <button class="download-btn" onclick="downloadCSV()">
+            <i class="fa-solid fa-file-arrow-down"></i> Download Report
+        </button>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Shift</th>
+                    <th>Total Hours</th>
+                    <th>Regular Hours (8h)</th>
+                    <th>OT Hours</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="attendanceTableBody">
+                <!-- Data dynamically ekhane ashbe -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Ajker date default bhabe set korar jonne
+    document.getElementById('date').valueAsDate = new Date();
+
+    // LocalStorage theke purono data load kora (jodi thake)
+    let attendanceData = JSON.parse(localStorage.getItem('attendanceRecords')) || [];
+
+    // Table update korar function
+    function updateTable() {
+        const tbody = document.getElementById('attendanceTableBody');
+        tbody.innerHTML = '';
+
+        // Date onusare sort korar jonne
+        attendanceData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        attendanceData.forEach((record, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${record.date}</td>
+                <td>${record.shift}</td>
+                <td>${record.totalHours} hrs</td>
+                <td>${record.regHours} hrs</td>
+                <td>${record.otHours > 0 ? `<strong style="color: #10b981;">+${record.otHours} hrs</strong>` : '0 hrs'}</td>
+                <td>
+                    <button class="delete-btn" onclick="deleteRecord(${index})">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Form submit handle kora
+    document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const date = document.getElementById('date').value;
+        const shift = document.getElementById('shift').value;
+        const totalHours = parseInt(document.getElementById('hours').value);
+
+        // Calculation: 8 ghanta duty, baki ta OT
+        const regHours = totalHours > 8 ? 8 : totalHours;
+        const otHours = totalHours > 8 ? totalHours - 8 : 0;
+
+        // Data object tracking
+        const newRecord = {
+            date,
+            shift,
+            totalHours,
+            regHours,
+            otHours
+        };
+
+        attendanceData.push(newRecord);
+        localStorage.setItem('attendanceRecords', JSON.stringify(attendanceData));
+        
+        updateTable();
+        document.getElementById('hours').value = ''; // Input field clear kora
+    });
+
+    // Delete Record Function
+    function deleteRecord(index) {
+        if(confirm("Eti delete korte chan?")) {
+            attendanceData.splice(index, 1);
+            localStorage.setItem('attendanceRecords', JSON.stringify(attendanceData));
+            updateTable();
+        }
+    }
+
+    // CSV/Excel Format e Report Download function
+    function downloadCSV() {
+        if(attendanceData.length === 0) {
+            alert("Download korar jonne kono data nei!");
+            return;
+        }
+
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Date,Shift,Total Hours,Regular Hours,OT Hours\n";
+
+        attendanceData.forEach(r => {
+            csvContent += `${r.date},${r.shift},${r.totalHours},${r.regHours},${r.otHours}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Attendance_Report_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // App open holei table load hobe
+    updateTable();
+</script>
+
+</body>
+</html>
