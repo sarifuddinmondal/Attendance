@@ -55,6 +55,7 @@
         .navigation-container {
             display: flex;
             justify-content: center;
+            gap: 15px;
             margin: 25px 0;
         }
 
@@ -62,9 +63,9 @@
             background-color: var(--accent);
             color: white;
             border: none;
-            padding: 14px 30px;
+            padding: 14px 20px;
             border-radius: 30px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             display: flex;
@@ -77,6 +78,13 @@
 
         .nav-btn:hover {
             background-color: #059669;
+        }
+
+        .nav-btn.report-btn {
+            background-color: #3b82f6;
+        }
+        .nav-btn.report-btn:hover {
+            background-color: #2563eb;
         }
 
         /* Widgets Layout */
@@ -132,6 +140,71 @@
         .stat-card.full-width .stat-value {
             font-size: 24px;
         }
+
+        /* Modal / Popup Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px; right: 15px;
+            font-size: 20px; cursor: pointer; color: var(--text-muted);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .form-control {
+            width: 100%; padding: 10px;
+            border: 1px solid #ccc; border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        /* Print Styles - ছুড়ে ফেলবে অপ্রয়োজনীয় এলিমেন্ট প্রিন্ট করার সময় */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printSection, #printSection * {
+                visibility: visible;
+            }
+            #printSection {
+                position: absolute;
+                left: 0; top: 0; width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -178,21 +251,43 @@
 
         <div class="navigation-container">
             <a href="./attendance.html" class="nav-btn">
-                <i class="fa-solid fa-calendar-days"></i> Manage Attendance & Report
+                <i class="fa-solid fa-calendar-days"></i> Attendance
             </a>
+            <button class="nav-btn report-btn" onclick="openReportModal()">
+                <i class="fa-solid fa-file-pdf"></i> Download Report
+            </button>
         </div>
 
     </div>
 
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeReportModal()">&times;</span>
+            <div class="modal-header"><i class="fa-solid fa-print"></i> Select Date Range</div>
+            
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" id="startDate" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>End Date</label>
+                <input type="date" id="endDate" class="form-control">
+            </div>
+
+            <button class="nav-btn" style="width:100%; justify-content:center;" onclick="generateReportPDF()">
+                <i class="fa-solid fa-download"></i> Print / Save PDF
+            </button>
+        </div>
+    </div>
+
+    <div id="printSection"></div>
+
     <script>
-        // Supabase Configurations
         const SUPABASE_URL = "https://vkwxheddyagpjbsrovgh.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrd3hoZWRkeWFncGpic3JvdmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDM2NjEsImV4cCI6MjA5MDcxOTY2MX0.KN_JLY2owScvkGVy2inJIkEzW82_Qb2a1cavcRJFzlA";
         
-        // Initialize Supabase Client
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Salary Configurations
         const BASE_MONTHLY_SALARY = 19500;
         const WORK_DAYS_PER_MONTH = 26; 
         const REGULAR_HOURS_PER_DAY = 8;
@@ -200,35 +295,34 @@
         const PER_DAY_SALARY = BASE_MONTHLY_SALARY / WORK_DAYS_PER_MONTH; 
         const PER_HOUR_RATE = PER_DAY_SALARY / REGULAR_HOURS_PER_DAY; 
 
+        let globalRecords = []; // সমস্ত ডাটা এখানে থাকবে রিপোর্ট ফিল্টার করার জন্য
+
         async function calculateDashboardData() {
             try {
-                // Fetch data from database table
                 let { data: attendanceRecords, error } = await _supabase
                     .from('igi_attendance') 
-                    .select('*');
+                    .select('*')
+                    .order('date', { ascending: true });
 
                 if (error) throw error;
+                globalRecords = attendanceRecords || [];
 
                 let totalDays = 0;
                 let totalDutyHours = 0;
                 let totalOtHours = 0;
 
-                if (attendanceRecords && attendanceRecords.length > 0) {
-                    attendanceRecords.forEach((record) => {
-                        // Exclude calculations if marked as Absent
-                        if (record.shift !== 'Absent') {
-                            totalDays++;
-                            totalDutyHours += parseFloat(record.reg_hours || 0);
-                            totalOtHours += parseFloat(record.ot_hours || 0);
-                        }
-                    });
-                }
+                globalRecords.forEach((record) => {
+                    if (record.shift !== 'Absent') {
+                        totalDays++;
+                        totalDutyHours += parseFloat(record.reg_hours || 0);
+                        totalOtHours += parseFloat(record.ot_hours || 0);
+                    }
+                });
 
                 let earnedBaseSalary = totalDays * PER_DAY_SALARY;
                 let earnedOtMoney = totalOtHours * PER_HOUR_RATE;
                 let totalGrossMoney = earnedBaseSalary + earnedOtMoney;
 
-                // UI Update
                 document.getElementById('totalDays').innerText = `${totalDays} Days`;
                 document.getElementById('totalDutyHours').innerText = `${totalDutyHours} hrs`;
                 document.getElementById('totalOtHours').innerText = `${totalOtHours} hrs`;
@@ -236,15 +330,102 @@
                 document.getElementById('totalGrossMoney').innerText = `₹${totalGrossMoney.toFixed(2)}`;
                 
             } catch (err) {
-                console.error("Error fetching database data: ", err.message);
-                document.getElementById('totalDays').innerText = `Error`;
-                document.getElementById('totalDutyHours').innerText = `Error`;
-                document.getElementById('totalOtHours').innerText = `Error`;
-                alert("Database Connection Failed: " + err.message);
+                console.error(err.message);
+                alert("Connection failed.");
             }
         }
 
-        // Run on Page Load
+        // Modal Controls
+        function openReportModal() {
+            document.getElementById('reportModal').style.display = 'flex';
+            // বাই ডিফল্ট আজকের তারিখ সেট করা থাকবে
+            document.getElementById('startDate').valueAsDate = new Date();
+            document.getElementById('endDate').valueAsDate = new Date();
+        }
+
+        function closeReportModal() {
+            document.getElementById('reportModal').style.display = 'none';
+        }
+
+        // PDF / Print Report Generation
+        function generateReportPDF() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+
+            if(!start || !end) {
+                alert("Please select both dates!");
+                return;
+            }
+
+            // তারিখ অনুযায়ী ফিল্টারিং
+            const filtered = globalRecords.filter(r => r.date >= start && r.date <= end);
+
+            if(filtered.length === 0) {
+                alert("No records found in this date range!");
+                return;
+            }
+
+            // প্রিন্ট লেআউট টেবিল তৈরি
+            let tableRows = '';
+            let pDays = 0, pRegHours = 0, pOtHours = 0;
+
+            filtered.forEach(r => {
+                if(r.shift !== 'Absent') pDays++;
+                pRegHours += parseFloat(r.reg_hours || 0);
+                pOtHours += parseFloat(r.ot_hours || 0);
+
+                tableRows += `
+                    <tr>
+                        <td style="border:1px solid #ddd; padding:8px;">${r.date}</td>
+                        <td style="border:1px solid #ddd; padding:8px;">${r.shift}</td>
+                        <td style="border:1px solid #ddd; padding:8px;">${r.reg_hours} hrs</td>
+                        <td style="border:1px solid #ddd; padding:8px;">${r.ot_hours} hrs</td>
+                    </tr>
+                `;
+            });
+
+            let baseSalaryMoney = pDays * PER_DAY_SALARY;
+            let otMoney = pOtHours * PER_HOUR_RATE;
+            let totalMoney = baseSalaryMoney + otMoney;
+
+            const printSection = document.getElementById('printSection');
+            printSection.innerHTML = `
+                <div style="padding:20px; font-family:sans-serif; color:#1f2937;">
+                    <h2 style="color:#1e3a8a; text-align:center; margin-bottom:5px;">IGI SYSTEM REPORT</h2>
+                    <p style="text-align:center; margin-top:0; color:#6b7280;">Date Range: ${start} to ${end}</p>
+                    <hr style="border:1px solid #1e3a8a; margin-bottom:20px;">
+                    
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:25px;">
+                        <thead>
+                            <tr style="background-color:#1e3a8a; color:white; text-align:left;">
+                                <th style="padding:10px; border:1px solid #ddd;">Date</th>
+                                <th style="padding:10px; border:1px solid #ddd;">Shift</th>
+                                <th style="padding:10px; border:1px solid #ddd;">Regular Hours</th>
+                                <th style="padding:10px; border:1px solid #ddd;">OT Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+
+                    <div style="background:#f4f6f9; padding:15px; border-radius:8px; width:60%; margin-left:auto;">
+                        <h4 style="margin:0 0 10px 0; color:#1e3a8a;">Summary Statement:</h4>
+                        <p style="margin:4px 0; font-size:14px;"><b>Total Active Days:</b> ${pDays} Days</p>
+                        <p style="margin:4px 0; font-size:14px;"><b>Total Duty Hours:</b> ${pRegHours} hrs</p>
+                        <p style="margin:4px 0; font-size:14px;"><b>Total OT Hours:</b> ${pOtHours} hrs</p>
+                        <p style="margin:4px 0; font-size:14px;"><b>Total OT Money:</b> ₹${otMoney.toFixed(2)}</p>
+                        <hr style="border-top:1px dashed #ccc;">
+                        <p style="margin:4px 0; font-size:16px; color:#10b981;"><b>Gross Total (Salary+OT):</b> ₹${totalMoney.toFixed(2)}</p>
+                    </div>
+                </div>
+            `;
+
+            // মডাল বন্ধ করে প্রিন্ট উইন্ডো চালু করা
+            closeReportModal();
+            window.print();
+        }
+
         calculateDashboardData();
     </script>
 </body>
