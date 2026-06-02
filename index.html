@@ -192,7 +192,7 @@
             box-sizing: border-box;
         }
 
-        /* Print Styles - ছুড়ে ফেলবে অপ্রয়োজনীয় এলিমেন্ট প্রিন্ট করার সময় */
+        /* Print Styles */
         @media print {
             body * {
                 visibility: hidden;
@@ -220,6 +220,7 @@
     <div class="container">
         
         <h2 style="text-align: center; margin-top: 10px; color: var(--primary);">Overview Dashboard</h2>
+        <p id="currentCycleLabel" style="text-align: center; font-size: 14px; color: var(--text-muted); margin-top: -5px; font-weight: 600;"></p>
 
         <div class="stats-grid">
             <div class="stat-card">
@@ -295,9 +296,41 @@
         const PER_DAY_SALARY = BASE_MONTHLY_SALARY / WORK_DAYS_PER_MONTH; 
         const PER_HOUR_RATE = PER_DAY_SALARY / REGULAR_HOURS_PER_DAY; 
 
-        let globalRecords = []; // সমস্ত ডাটা এখানে থাকবে রিপোর্ট ফিল্টার করার জন্য
+        let globalRecords = []; 
+        let currentCycleStart = "";
+        let currentCycleEnd = "";
 
-        // YYYY-MM-DD ফরম্যাটকে dd/mm/yy ফরম্যাটে রূপান্তর করার হেল্পার ফাংশন
+        // আজকের তারিখ অনুযায়ী ২২ থেকে ২২ তারিখের সাইকেল বের করার ফাংশন
+        function calculateCurrentCycle() {
+            let today = new Date();
+            let year = today.getFullYear();
+            let month = today.getMonth(); // 0 = Jan, 1 = Feb, etc.
+            let day = today.getDate();
+
+            let start, end;
+
+            if (day >= 22) {
+                // আজ যদি ২২ বা তার বেশি হয়, তবে এই মাসের ২২ থেকে পরের মাসের ২২
+                start = new Date(year, month, 22);
+                end = new Date(year, month + 1, 22);
+            } else {
+                // আজ যদি ২২ এর কম হয়, তবে গত মাসের ২২ থেকে এই মাসের ২২
+                start = new Date(year, month - 1, 22);
+                end = new Date(year, month, 22);
+            }
+
+            // YYYY-MM-DD ফরম্যাটে কনভার্ট করা (Local Timezone ঠিক রেখে)
+            currentCycleStart = formatDateToYYYYMMDD(start);
+            currentCycleEnd = formatDateToYYYYMMDD(end);
+        }
+
+        function formatDateToYYYYMMDD(dateObj) {
+            let numYear = dateObj.getFullYear();
+            let numMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
+            let numDay = String(dateObj.getDate()).padStart(2, '0');
+            return `${numYear}-${numMonth}-${numDay}`;
+        }
+
         function formatToDDMMYY(dateString) {
             if (!dateString) return '';
             let parts = dateString.split('-');
@@ -310,9 +343,17 @@
 
         async function calculateDashboardData() {
             try {
+                calculateCurrentCycle();
+                
+                // ড্যাশবোর্ডের নিচে কারেন্ট সাইকেল রেঞ্জ দেখানোর জন্য
+                document.getElementById('currentCycleLabel').innerText = `Cycle: ${formatToDDMMYY(currentCycleStart)} to ${formatToDDMMYY(currentCycleEnd)}`;
+
+                // শুধুমাত্র চলতি ২২ থেকে ২২ সাইকেলের ডাটা কুয়েরি করা হচ্ছে
                 let { data: attendanceRecords, error } = await _supabase
                     .from('igi_attendance') 
                     .select('*')
+                    .gte('date', currentCycleStart)
+                    .lte('date', currentCycleEnd)
                     .order('date', { ascending: true });
 
                 if (error) throw error;
@@ -349,10 +390,17 @@
         // Modal Controls
         function openReportModal() {
             document.getElementById('reportModal').style.display = 'flex';
-            // বাই ডিফল্ট আজকের তারিখ সেট করা থাকবে
-            document.getElementById('startDate').valueAsDate = new Date();
-            document.getElementById('endDate').valueAsDate = new Date();
+            // মডাল খুললে বাই-ডিফল্ট কারেন্ট সাইকেলের ২২ থেকে ২২ ডেট ইনপুট বক্সে বসে যাবে
+            document.getElementById('startDate').value = currentCycleStart;
+            document.getElementById('endDate').value = currentCycleEnd;
         }
+
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('reportModal');
+            if (event.target === modal) {
+                closeReportModal();
+            }
+        });
 
         function closeReportModal() {
             document.getElementById('reportModal').style.display = 'none';
@@ -368,7 +416,7 @@
                 return;
             }
 
-            // তারিখ অনুযায়ী ফিল্টারিং
+            // ইউজার দ্বারা সিলেক্ট করা ডেট অনুযায়ী ফিল্টার (যদি মডালে ডেট চেঞ্জ করা হয়)
             const filtered = globalRecords.filter(r => r.date >= start && r.date <= end);
 
             if(filtered.length === 0) {
@@ -376,7 +424,6 @@
                 return;
             }
 
-            // প্রিন্ট লেআউট টেবিল তৈরি
             let tableRows = '';
             let pDays = 0, pRegHours = 0, pOtHours = 0;
 
@@ -385,11 +432,8 @@
                 pRegHours += parseFloat(r.reg_hours || 0);
                 pOtHours += parseFloat(r.ot_hours || 0);
 
-                // Start Time এবং End Time ভ্যালু না থাকলে বা Absent হলে ফাঁকা দেখাবে
                 let displayStart = (r.shift !== 'Absent' && r.start_time) ? r.start_time : '-';
                 let displayEnd = (r.shift !== 'Absent' && r.end_time) ? r.end_time : '-';
-                
-                // ডেট ফরম্যাটিং
                 let formattedDate = formatToDDMMYY(r.date);
 
                 tableRows += `
@@ -443,7 +487,6 @@
                 </div>
             `;
 
-            // মডাল বন্ধ করে প্রিন্ট উইন্ডো চালু করা
             closeReportModal();
             window.print();
         }
