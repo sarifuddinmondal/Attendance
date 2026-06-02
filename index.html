@@ -300,26 +300,23 @@
         let currentCycleStart = "";
         let currentCycleEnd = "";
 
-        // আজকের তারিখ অনুযায়ী ২২ থেকে ২২ তারিখের সাইকেল বের করার ফাংশন
+        // ২২ থেকে ২২ তারিখের সাইকেল ক্যালকুলেশন (শুধুমাত্র ড্যাশবোর্ড ডিসপ্লের জন্য)
         function calculateCurrentCycle() {
             let today = new Date();
             let year = today.getFullYear();
-            let month = today.getMonth(); // 0 = Jan, 1 = Feb, etc.
+            let month = today.getMonth(); 
             let day = today.getDate();
 
             let start, end;
 
             if (day >= 22) {
-                // আজ যদি ২২ বা তার বেশি হয়, তবে এই মাসের ২২ থেকে পরের মাসের ২২
                 start = new Date(year, month, 22);
                 end = new Date(year, month + 1, 22);
             } else {
-                // আজ যদি ২২ এর কম হয়, তবে গত মাসের ২২ থেকে এই মাসের ২২
                 start = new Date(year, month - 1, 22);
                 end = new Date(year, month, 22);
             }
 
-            // YYYY-MM-DD ফরম্যাটে কনভার্ট করা (Local Timezone ঠিক রেখে)
             currentCycleStart = formatDateToYYYYMMDD(start);
             currentCycleEnd = formatDateToYYYYMMDD(end);
         }
@@ -345,25 +342,25 @@
             try {
                 calculateCurrentCycle();
                 
-                // ড্যাশবোর্ডের নিচে কারেন্ট সাইকেল রেঞ্জ দেখানোর জন্য
                 document.getElementById('currentCycleLabel').innerText = `Cycle: ${formatToDDMMYY(currentCycleStart)} to ${formatToDDMMYY(currentCycleEnd)}`;
 
-                // শুধুমাত্র চলতি ২২ থেকে ২২ সাইকেলের ডাটা কুয়েরি করা হচ্ছে
+                // ডাটাবেজ থেকে সম্পূর্ণ ডাটা একবারে আনা হচ্ছে যেন রিপোর্টে যেকোনো তারিখ সিলেক্ট করলে পাওয়া যায়
                 let { data: attendanceRecords, error } = await _supabase
                     .from('igi_attendance') 
                     .select('*')
-                    .gte('date', currentCycleStart)
-                    .lte('date', currentCycleEnd)
                     .order('date', { ascending: true });
 
                 if (error) throw error;
                 globalRecords = attendanceRecords || [];
 
+                // ড্যাশবোর্ডের মূল স্ক্রিনে শুধুমাত্র ২২ থেকে ২২ তারিখের ডাটা ফিল্টার করে দেখানো হচ্ছে
+                const dashboardFiltered = globalRecords.filter(r => r.date >= currentCycleStart && r.date <= currentCycleEnd);
+
                 let totalDays = 0;
                 let totalDutyHours = 0;
                 let totalOtHours = 0;
 
-                globalRecords.forEach((record) => {
+                dashboardFiltered.forEach((record) => {
                     if (record.shift !== 'Absent') {
                         totalDays++;
                         totalDutyHours += parseFloat(record.reg_hours || 0);
@@ -390,7 +387,7 @@
         // Modal Controls
         function openReportModal() {
             document.getElementById('reportModal').style.display = 'flex';
-            // মডাল খুললে বাই-ডিফল্ট কারেন্ট সাইকেলের ২২ থেকে ২২ ডেট ইনপুট বক্সে বসে যাবে
+            // মডাল ওপেন হলে বাই-ডিফল্ট ড্যাশবোর্ডের সাইকেল ডেট সেট থাকবে, তবে ইউজার চাইলে পরিবর্তন করতে পারবেন
             document.getElementById('startDate').value = currentCycleStart;
             document.getElementById('endDate').value = currentCycleEnd;
         }
@@ -416,7 +413,7 @@
                 return;
             }
 
-            // ইউজার দ্বারা সিলেক্ট করা ডেট অনুযায়ী ফিল্টার (যদি মডালে ডেট চেঞ্জ করা হয়)
+            // মডালে ইউজার যে তারিখ সিলেক্ট করবেন (যেমন ২১ তারিখ), সেই অনুযায়ী নিখুঁত ফিল্টারিং
             const filtered = globalRecords.filter(r => r.date >= start && r.date <= end);
 
             if(filtered.length === 0) {
