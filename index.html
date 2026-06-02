@@ -14,6 +14,7 @@
             --accent: #10b981;
             --text-main: #1f2937;
             --text-muted: #6b7280;
+            --danger: #ef4444;
         }
 
         body {
@@ -115,6 +116,10 @@
             font-size: 20px;
             color: var(--primary);
             margin-bottom: 8px;
+        }
+
+        .stat-card.leave-card i {
+            color: var(--danger);
         }
 
         .stat-card.full-width i {
@@ -228,6 +233,11 @@
                 <span class="stat-label">Total Weekdays Done</span>
                 <span id="totalDays" class="stat-value">Connecting...</span>
             </div>
+            <div class="stat-card leave-card">
+                <i class="fa-solid fa-calendar-times"></i>
+                <span class="stat-label">Total Leaves (Absent)</span>
+                <span id="totalLeaves" class="stat-value">Connecting...</span>
+            </div>
             <div class="stat-card">
                 <i class="fa-solid fa-clock"></i>
                 <span class="stat-label">Total Duty Hours</span>
@@ -300,7 +310,7 @@
         let currentCycleStart = "";
         let currentCycleEnd = "";
 
-        // ২২ থেকে ২২ তারিখের সাইকেল ক্যালকুলেশন (শুধুমাত্র ড্যাশবোর্ড ডিসপ্লের জন্য)
+        // ২২ থেকে ২২ তারিখের সাইকেল ক্যালকুলেশন
         function calculateCurrentCycle() {
             let today = new Date();
             let year = today.getFullYear();
@@ -344,7 +354,7 @@
                 
                 document.getElementById('currentCycleLabel').innerText = `Cycle: ${formatToDDMMYY(currentCycleStart)} to ${formatToDDMMYY(currentCycleEnd)}`;
 
-                // ডাটাবেজ থেকে সম্পূর্ণ ডাটা একবারে আনা হচ্ছে যেন রিপোর্টে যেকোনো তারিখ সিলেক্ট করলে পাওয়া যায়
+                // ডাটাবেজ থেকে সম্পূর্ণ ডাটা একবারে আনা হচ্ছে
                 let { data: attendanceRecords, error } = await _supabase
                     .from('igi_attendance') 
                     .select('*')
@@ -353,10 +363,11 @@
                 if (error) throw error;
                 globalRecords = attendanceRecords || [];
 
-                // ড্যাশবোর্ডের মূল স্ক্রিনে শুধুমাত্র ২২ থেকে ২২ তারিখের ডাটা ফিল্টার করে দেখানো হচ্ছে
+                // ড্যাশবোর্ডের মূল স্ক্রিনে ২২ থেকে ২২ তারিখের ডাটা ফিল্টার
                 const dashboardFiltered = globalRecords.filter(r => r.date >= currentCycleStart && r.date <= currentCycleEnd);
 
                 let totalDays = 0;
+                let totalLeaves = 0;
                 let totalDutyHours = 0;
                 let totalOtHours = 0;
 
@@ -365,6 +376,8 @@
                         totalDays++;
                         totalDutyHours += parseFloat(record.reg_hours || 0);
                         totalOtHours += parseFloat(record.ot_hours || 0);
+                    } else {
+                        totalLeaves++; // Absent থাকলে ছুটির সংখ্যা বাড়বে
                     }
                 });
 
@@ -373,6 +386,7 @@
                 let totalGrossMoney = earnedBaseSalary + earnedOtMoney;
 
                 document.getElementById('totalDays').innerText = `${totalDays} Days`;
+                document.getElementById('totalLeaves').innerText = `${totalLeaves} Days`;
                 document.getElementById('totalDutyHours').innerText = `${totalDutyHours} hrs`;
                 document.getElementById('totalOtHours').innerText = `${totalOtHours} hrs`;
                 document.getElementById('totalOtMoney').innerText = `₹${earnedOtMoney.toFixed(2)}`;
@@ -387,7 +401,6 @@
         // Modal Controls
         function openReportModal() {
             document.getElementById('reportModal').style.display = 'flex';
-            // মডাল ওপেন হলে বাই-ডিফল্ট ড্যাশবোর্ডের সাইকেল ডেট সেট থাকবে, তবে ইউজার চাইলে পরিবর্তন করতে পারবেন
             document.getElementById('startDate').value = currentCycleStart;
             document.getElementById('endDate').value = currentCycleEnd;
         }
@@ -413,7 +426,6 @@
                 return;
             }
 
-            // মডালে ইউজার যে তারিখ সিলেক্ট করবেন (যেমন ২১ তারিখ), সেই অনুযায়ী নিখুঁত ফিল্টারিং
             const filtered = globalRecords.filter(r => r.date >= start && r.date <= end);
 
             if(filtered.length === 0) {
@@ -422,10 +434,14 @@
             }
 
             let tableRows = '';
-            let pDays = 0, pRegHours = 0, pOtHours = 0;
+            let pDays = 0, pLeaves = 0, pRegHours = 0, pOtHours = 0;
 
             filtered.forEach(r => {
-                if(r.shift !== 'Absent') pDays++;
+                if(r.shift !== 'Absent') {
+                    pDays++;
+                } else {
+                    pLeaves++;
+                }
                 pRegHours += parseFloat(r.reg_hours || 0);
                 pOtHours += parseFloat(r.ot_hours || 0);
 
@@ -436,7 +452,7 @@
                 tableRows += `
                     <tr>
                         <td style="border:1px solid #ddd; padding:8px;">${formattedDate}</td>
-                        <td style="border:1px solid #ddd; padding:8px;">${r.shift}</td>
+                        <td style="border:1px solid #ddd; padding:8px; ${r.shift === 'Absent' ? 'color: red; font-weight: bold;' : ''}">${r.shift}</td>
                         <td style="border:1px solid #ddd; padding:8px;">${displayStart}</td>
                         <td style="border:1px solid #ddd; padding:8px;">${displayEnd}</td>
                         <td style="border:1px solid #ddd; padding:8px;">${r.reg_hours} hrs</td>
@@ -475,6 +491,7 @@
                     <div style="background:#f4f6f9; padding:15px; border-radius:8px; width:60%; margin-left:auto;">
                         <h4 style="margin:0 0 10px 0; color:#1e3a8a;">Summary Statement:</h4>
                         <p style="margin:4px 0; font-size:14px;"><b>Total Active Days:</b> ${pDays} Days</p>
+                        <p style="margin:4px 0; font-size:14px; color:#ef4444;"><b>Total Leaves (Absent):</b> ${pLeaves} Days</p>
                         <p style="margin:4px 0; font-size:14px;"><b>Total Duty Hours:</b> ${pRegHours} hrs</p>
                         <p style="margin:4px 0; font-size:14px;"><b>Total OT Hours:</b> ${pOtHours} hrs</p>
                         <p style="margin:4px 0; font-size:14px;"><b>Total OT Money:</b> ₹${otMoney.toFixed(2)}</p>
