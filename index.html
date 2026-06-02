@@ -297,6 +297,17 @@
 
         let globalRecords = []; // সমস্ত ডাটা এখানে থাকবে রিপোর্ট ফিল্টার করার জন্য
 
+        // YYYY-MM-DD ফরম্যাটকে dd/mm/yy ফরম্যাটে রূপান্তর করার হেল্পার ফাংশন
+        function formatToDDMMYY(dateString) {
+            if (!dateString) return '';
+            let parts = dateString.split('-');
+            if (parts.length !== 3) return dateString;
+            let year = parts[0].slice(-2); 
+            let month = parts[1];
+            let day = parts[2];
+            return `${day}/${month}/${year}`;
+        }
+
         async function calculateDashboardData() {
             try {
                 let { data: attendanceRecords, error } = await _supabase
@@ -374,10 +385,19 @@
                 pRegHours += parseFloat(r.reg_hours || 0);
                 pOtHours += parseFloat(r.ot_hours || 0);
 
+                // Start Time এবং End Time ভ্যালু না থাকলে বা Absent হলে ফাঁকা দেখাবে
+                let displayStart = (r.shift !== 'Absent' && r.start_time) ? r.start_time : '-';
+                let displayEnd = (r.shift !== 'Absent' && r.end_time) ? r.end_time : '-';
+                
+                // ডেট ফরম্যাটিং
+                let formattedDate = formatToDDMMYY(r.date);
+
                 tableRows += `
                     <tr>
-                        <td style="border:1px solid #ddd; padding:8px;">${r.date}</td>
+                        <td style="border:1px solid #ddd; padding:8px;">${formattedDate}</td>
                         <td style="border:1px solid #ddd; padding:8px;">${r.shift}</td>
+                        <td style="border:1px solid #ddd; padding:8px;">${displayStart}</td>
+                        <td style="border:1px solid #ddd; padding:8px;">${displayEnd}</td>
                         <td style="border:1px solid #ddd; padding:8px;">${r.reg_hours} hrs</td>
                         <td style="border:1px solid #ddd; padding:8px;">${r.ot_hours} hrs</td>
                     </tr>
@@ -392,7 +412,7 @@
             printSection.innerHTML = `
                 <div style="padding:20px; font-family:sans-serif; color:#1f2937;">
                     <h2 style="color:#1e3a8a; text-align:center; margin-bottom:5px;">IGI SYSTEM REPORT</h2>
-                    <p style="text-align:center; margin-top:0; color:#6b7280;">Date Range: ${start} to ${end}</p>
+                    <p style="text-align:center; margin-top:0; color:#6b7280;">Date Range: ${formatToDDMMYY(start)} to ${formatToDDMMYY(end)}</p>
                     <hr style="border:1px solid #1e3a8a; margin-bottom:20px;">
                     
                     <table style="width:100%; border-collapse:collapse; margin-bottom:25px;">
@@ -400,6 +420,8 @@
                             <tr style="background-color:#1e3a8a; color:white; text-align:left;">
                                 <th style="padding:10px; border:1px solid #ddd;">Date</th>
                                 <th style="padding:10px; border:1px solid #ddd;">Shift</th>
+                                <th style="padding:10px; border:1px solid #ddd;">Start Time</th>
+                                <th style="padding:10px; border:1px solid #ddd;">End Time</th>
                                 <th style="padding:10px; border:1px solid #ddd;">Regular Hours</th>
                                 <th style="padding:10px; border:1px solid #ddd;">OT Hours</th>
                             </tr>
