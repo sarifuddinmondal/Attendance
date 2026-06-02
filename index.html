@@ -3,315 +3,247 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Attendance & OT Tracker</title>
-    <!-- Font Awesome Icon er jonne -->
+    <title>IGI - Main Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --primary-color: #4f46e5;
-            --secondary-color: #4338ca;
-            --background: #f3f4f6;
+            --bg-color: #f4f6f9;
             --card-bg: #ffffff;
+            --primary: #1e3a8a;
+            --accent: #10b981;
             --text-main: #1f2937;
-            --text-muted: #4b5563;
+            --text-muted: #6b7280;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--background);
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
+            padding: 0;
         }
 
-        .container {
-            width: 100%;
-            max-width: 900px;
-        }
-
-        h2 {
-            text-align: center;
-            color: var(--primary-color);
-            margin-bottom: 30px;
-        }
-
-        /* Form Layout */
-        .card {
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 30px;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            align-items: flex-end;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        label {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--text-muted);
-        }
-
-        input, select {
-            padding: 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 15px;
-            outline: none;
-            transition: border 0.2s;
-        }
-
-        input:focus, select:focus {
-            border-color: var(--primary-color);
-        }
-
-        button {
-            background-color: var(--primary-color);
+        header {
+            background-color: var(--primary);
             color: white;
-            border: none;
-            padding: 11px 20px;
-            font-size: 15px;
-            font-weight: 600;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        button:hover {
-            background-color: var(--secondary-color);
-        }
-
-        /* Table & Action Section */
-        .table-header {
+            padding: 15px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        .table-header h3 {
+        header h1 {
             margin: 0;
+            font-size: 20px;
+            letter-spacing: 1px;
         }
 
-        .download-btn {
-            background-color: #10b981;
+        .company-logo {
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .download-btn:hover {
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+
+        .navigation-container {
+            display: flex;
+            justify-content: center;
+            margin: 25px 0;
+        }
+
+        .nav-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background 0.2s;
+        }
+
+        .nav-btn:hover {
             background-color: #059669;
         }
 
-        .table-wrapper {
+        /* Widgets Layout */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
             background: var(--card-bg);
+            padding: 15px;
             border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
+        .stat-card.full-width {
+            grid-column: span 2;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
         }
 
-        th, td {
-            padding: 14px 18px;
-            border-bottom: 1px solid #e5e7eb;
+        .stat-card i {
+            font-size: 20px;
+            color: var(--primary);
+            margin-bottom: 8px;
         }
 
-        th {
-            background-color: #f9fafb;
+        .stat-card.full-width i {
+            color: #38bdf8;
+        }
+
+        .stat-label {
+            font-size: 13px;
             color: var(--text-muted);
-            font-weight: 600;
+            font-weight: 500;
         }
 
-        tr:last-child td {
-            border-bottom: none;
+        .stat-card.full-width .stat-label {
+            color: #e0f2fe;
         }
 
-        .delete-btn {
-            background: none;
-            border: none;
-            color: #ef4444;
-            cursor: pointer;
-            padding: 5px;
-            font-size: 16px;
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 4px;
         }
-        
-        .delete-btn:hover {
-            color: #dc2626;
+
+        .stat-card.full-width .stat-value {
+            font-size: 24px;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2><i class="fa-solid fa-business-time"></i> Daily Attendance & OT Tracker</h2>
+    <header>
+        <div class="company-logo">
+            <i class="fa-solid fa-building-shield"></i>
+            <h1>IGI SYSTEM</h1>
+        </div>
+        <div style="font-size: 12px; font-weight: 600;">26 Days Base</div>
+    </header>
 
-    <!-- Attendance Input Form -->
-    <div class="card">
-        <form id="attendanceForm" class="form-grid">
-            <div class="form-group">
-                <label for="date">Date</label>
-                <input type="date" id="date" required>
-            </div>
-
-            <div class="form-group">
-                <label for="shift">Shift</label>
-                <select id="shift" required>
-                    <option value="Day">Day</option>
-                    <option value="Night">Night</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="hours">Duty Hours</label>
-                <input type="number" id="hours" min="1" max="24" placeholder="e.g. 8 or 12" required>
-            </div>
-
-            <button type="submit"><i class="fa-solid fa-plus"></i> Add Entry</button>
-        </form>
-    </div>
-
-    <!-- Attendance Report Table -->
-    <div class="table-header">
-        <h3>Attendance Logs</h3>
-        <button class="download-btn" onclick="downloadCSV()">
-            <i class="fa-solid fa-file-arrow-down"></i> Download Report
-        </button>
-    </div>
-
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Shift</th>
-                    <th>Total Hours</th>
-                    <th>Regular Hours (8h)</th>
-                    <th>OT Hours</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="attendanceTableBody">
-                <!-- Data dynamically ekhane ashbe -->
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    // Ajker date default bhabe set korar jonne
-    document.getElementById('date').valueAsDate = new Date();
-
-    // LocalStorage theke purono data load kora (jodi thake)
-    let attendanceData = JSON.parse(localStorage.getItem('attendanceRecords')) || [];
-
-    // Table update korar function
-    function updateTable() {
-        const tbody = document.getElementById('attendanceTableBody');
-        tbody.innerHTML = '';
-
-        // Date onusare sort korar jonne
-        attendanceData.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        attendanceData.forEach((record, index) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${record.date}</td>
-                <td>${record.shift}</td>
-                <td>${record.totalHours} hrs</td>
-                <td>${record.regHours} hrs</td>
-                <td>${record.otHours > 0 ? `<strong style="color: #10b981;">+${record.otHours} hrs</strong>` : '0 hrs'}</td>
-                <td>
-                    <button class="delete-btn" onclick="deleteRecord(${index})">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    // Form submit handle kora
-    document.getElementById('attendanceForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const date = document.getElementById('date').value;
-        const shift = document.getElementById('shift').value;
-        const totalHours = parseInt(document.getElementById('hours').value);
-
-        // Calculation: 8 ghanta duty, baki ta OT
-        const regHours = totalHours > 8 ? 8 : totalHours;
-        const otHours = totalHours > 8 ? totalHours - 8 : 0;
-
-        // Data object tracking
-        const newRecord = {
-            date,
-            shift,
-            totalHours,
-            regHours,
-            otHours
-        };
-
-        attendanceData.push(newRecord);
-        localStorage.setItem('attendanceRecords', JSON.stringify(attendanceData));
+    <div class="container">
         
-        updateTable();
-        document.getElementById('hours').value = ''; // Input field clear kora
-    });
+        <h2 style="text-align: center; margin-top: 10px; color: var(--primary);">Overview Dashboard</h2>
 
-    // Delete Record Function
-    function deleteRecord(index) {
-        if(confirm("Eti delete korte chan?")) {
-            attendanceData.splice(index, 1);
-            localStorage.setItem('attendanceRecords', JSON.stringify(attendanceData));
-            updateTable();
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="fa-solid fa-calendar-check"></i>
+                <span class="stat-label">Total Weekdays Done</span>
+                <span id="totalDays" class="stat-value">Loading...</span>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-clock"></i>
+                <span class="stat-label">Total Duty Hours</span>
+                <span id="totalDutyHours" class="stat-value">Loading...</span>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-business-time"></i>
+                <span class="stat-label">Total OT Hours</span>
+                <span id="totalOtHours" class="stat-value">Loading...</span>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-indian-rupee-sign"></i>
+                <span class="stat-label">Total OT Money</span>
+                <span id="totalOtMoney" class="stat-value">₹0.00</span>
+            </div>
+            <div class="stat-card full-width">
+                <i class="fa-solid fa-wallet"></i>
+                <span class="stat-label">Total Money (Base Salary + OT)</span>
+                <span id="totalGrossMoney" class="stat-value">₹0.00</span>
+            </div>
+        </div>
+
+        <div class="navigation-container">
+            <a href="attendance.html" class="nav-btn">
+                <i class="fa-solid fa-calendar-days"></i> Manage Attendance & Report
+            </a>
+        </div>
+
+    </div>
+
+    <script>
+        // Supabase Configurations
+        const SUPABASE_URL = "https://vkwxheddyagpjbsrovgh.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrd3hoZWRkeWFncGpic3JvdmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDM2NjEsImV4cCI6MjA5MDcxOTY2MX0.KN_JLY2owScvkGVy2inJIkEzW82_Qb2a1cavcRJFzlA";
+        
+        // Initialize Supabase Client
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Salary Configurations
+        const BASE_MONTHLY_SALARY = 19500;
+        const WORK_DAYS_PER_MONTH = 26; 
+        const REGULAR_HOURS_PER_DAY = 8;
+        
+        const PER_DAY_SALARY = BASE_MONTHLY_SALARY / WORK_DAYS_PER_MONTH; 
+        const PER_HOUR_RATE = PER_DAY_SALARY / REGULAR_HOURS_PER_DAY; 
+
+        async function calculateDashboardData() {
+            try {
+                // Fetch data from your database table
+                let { data: attendanceRecords, error } = await _supabase
+                    .from('igi_attendance') 
+                    .select('*');
+
+                if (error) throw error;
+
+                let totalDays = 0;
+                let totalDutyHours = 0;
+                let totalOtHours = 0;
+
+                if (attendanceRecords && attendanceRecords.length > 0) {
+                    attendanceRecords.forEach((record) => {
+                        // Exclude calculations if marked as Absent
+                        if (record.shift !== 'Absent') {
+                            totalDays++;
+                            totalDutyHours += parseFloat(record.regHours || 0);
+                            totalOtHours += parseFloat(record.otHours || 0);
+                        }
+                    });
+                }
+
+                let earnedBaseSalary = totalDays * PER_DAY_SALARY;
+                let earnedOtMoney = totalOtHours * PER_HOUR_RATE;
+                let totalGrossMoney = earnedBaseSalary + earnedOtMoney;
+
+                // UI Update
+                document.getElementById('totalDays').innerText = `${totalDays} Days`;
+                document.getElementById('totalDutyHours').innerText = `${totalDutyHours} hrs`;
+                document.getElementById('totalOtHours').innerText = `${totalOtHours} hrs`;
+                document.getElementById('totalOtMoney').innerText = `₹${earnedOtMoney.toFixed(2)}`;
+                document.getElementById('totalGrossMoney').innerText = `₹${totalGrossMoney.toFixed(2)}`;
+                
+            } catch (err) {
+                console.error("Error fetching database data: ", err.message);
+                // Fallback indication
+                document.getElementById('totalDays').innerText = `Error loading`;
+            }
         }
-    }
 
-    // CSV/Excel Format e Report Download function
-    function downloadCSV() {
-        if(attendanceData.length === 0) {
-            alert("Download korar jonne kono data nei!");
-            return;
-        }
-
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Date,Shift,Total Hours,Regular Hours,OT Hours\n";
-
-        attendanceData.forEach(r => {
-            csvContent += `${r.date},${r.shift},${r.totalHours},${r.regHours},${r.otHours}\n`;
-        });
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `Attendance_Report_${new Date().toISOString().slice(0,10)}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
-    // App open holei table load hobe
-    updateTable();
-</script>
-
+        // Run on Page Load
+        calculateDashboardData();
+    </script>
 </body>
 </html>
