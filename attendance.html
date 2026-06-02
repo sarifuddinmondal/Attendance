@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IGI - Manage Attendance</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Client library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -45,6 +46,17 @@
             color: white;
             text-decoration: none;
             font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
         }
 
         .container {
@@ -93,13 +105,218 @@
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn-submit:hover {
             background-color: #059669;
         }
 
-        /* Attendance List Styles */
+        /* Attendance List Layout */
         .history-title {
-            font
-          
+            font-size: 16px;
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .record-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-left: 4px solid var(--primary);
+        }
+
+        .record-item.absent {
+            border-left-color: var(--danger);
+        }
+
+        .record-info div {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .record-info span {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge-day { background: #e0f2fe; color: #0369a1; }
+        .badge-night { background: #f3e8ff; color: #6b21a8; }
+        .badge-absent { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+
+    <!-- Top Header Navigation -->
+    <header>
+        <!-- Back to Dashboard Link -->
+        <a href="./index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+        <h1>Manage Attendance</h1>
+    </header>
+
+    <div class="container">
+        
+        <!-- Attendance Data Input Card -->
+        <div class="card">
+            <h3 style="margin-top: 0; color: var(--primary);"><i class="fa-solid fa-pen-to-square"></i> Add Daily Report</h3>
+            <form id="attendanceForm">
+                <div class="form-group">
+                    <label for="date">Select Date</label>
+                    <input type="date" id="date" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="shift">Shift Status</label>
+                    <select id="shift" class="form-control" onchange="toggleHours()" required>
+                        <option value="Day">Day Shift</option>
+                        <option value="Night">Night Shift</option>
+                        <option value="Absent">Absent</option>
+                    </select>
+                </div>
+
+                <!-- Input fields for hours -->
+                <div id="hoursFields">
+                    <div class="form-group">
+                        <label for="regHours">Regular Duty Hours</label>
+                        <input type="number" id="regHours" class="form-control" min="0" max="24" step="0.5" value="8">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="otHours">Overtime (OT) Hours</label>
+                        <input type="number" id="otHours" class="form-control" min="0" max="24" step="0.5" value="0">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit"><i class="fa-solid fa-cloud-arrow-up"></i> Save Report</button>
+            </form>
+        </div>
+
+        <!-- Attendance Logs / History List -->
+        <div class="history-title"><i class="fa-solid fa-clock-rotate-left"></i> Recent Attendance Logs</div>
+        <div id="attendanceList">
+            <p style="text-align: center; color: var(--text-muted);">Loading logs...</p>
+        </div>
+
+    </div>
+
+    <script>
+        // Supabase App Configuration
+        const SUPABASE_URL = "https://vkwxheddyagpjbsrovgh.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrd3hoZWRkeWFncGpic3JvdmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDM2NjEsImV4cCI6MjA5MDcxOTY2MX0.KN_JLY2owScvkGVy2inJIkEzW82_Qb2a1cavcRJFzlA";
+        
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Form loads with today's date automatically
+        document.getElementById('date').valueAsDate = new Date();
+
+        // Logic to hide or reset input hours when Absent is active
+        function toggleHours() {
+            const shift = document.getElementById('shift').value;
+            const hoursFields = document.getElementById('hoursFields');
+            if (shift === 'Absent') {
+                hoursFields.style.display = 'none';
+                document.getElementById('regHours').value = 0;
+                document.getElementById('otHours').value = 0;
+            } else {
+                hoursFields.style.display = 'block';
+                document.getElementById('regHours').value = 8;
+                document.getElementById('otHours').value = 0;
+            }
+        }
+
+        // Fetch logs directly from Supabase DB using snake_case columns
+        async function fetchAttendanceLogs() {
+            try {
+                let { data: logs, error } = await _supabase
+                    .from('igi_attendance')
+                    .select('*')
+                    .order('date', { ascending: false });
+
+                if (error) throw error;
+
+                const listContainer = document.getElementById('attendanceList');
+                listContainer.innerHTML = '';
+
+                if (!logs || logs.length === 0) {
+                    listContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No records found.</p>';
+                    return;
+                }
+
+                logs.forEach(log => {
+                    const isAbsent = log.shift === 'Absent';
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = `record-item ${isAbsent ? 'absent' : ''}`;
+                    
+                    let badgeClass = 'badge-day';
+                    if(log.shift === 'Night') badgeClass = 'badge-night';
+                    if(log.shift === 'Absent') badgeClass = 'badge-absent';
+
+                    itemDiv.innerHTML = `
+                        <div class="record-info">
+                            <div>${log.date}</div>
+                            <span>Reg: ${log.reg_hours} hrs | OT: ${log.ot_hours} hrs</span>
+                        </div>
+                        <span class="status-badge ${badgeClass}">${log.shift}</span>
+                    `;
+                    listContainer.appendChild(itemDiv);
+                });
+
+            } catch (err) {
+                console.error("Error fetching logs: ", err.message);
+                document.getElementById('attendanceList').innerHTML = '<p style="text-align: center; color: var(--danger);">Failed to sync data.</p>';
+            }
+        }
+
+        // Form Submit Handler to push data to Supabase using snake_case column layout
+        document.getElementById('attendanceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const date = document.getElementById('date').value;
+            const shift = document.getElementById('shift').value;
+            const reg_hours = parseFloat(document.getElementById('regHours').value || 0);
+            const ot_hours = parseFloat(document.getElementById('otHours').value || 0);
+
+            try {
+                const { error } = await _supabase
+                    .from('igi_attendance')
+                    .insert([{ date, shift, reg_hours, ot_hours }]);
+
+                if (error) {
+                    // Check for duplicate date primary key block
+                    if(error.code === '23505') { 
+                        alert('This date already has a registered entry!');
+                    } else {
+                        throw error;
+                    }
+                } else {
+                    alert('Data synced securely with Supabase!');
+                    fetchAttendanceLogs(); // Fresh list rendering
+                }
+
+            } catch (err) {
+                alert('Database Error: ' + err.message);
+            }
+        });
+
+        // Initialize table content on component mounts
+        fetchAttendanceLogs();
+    </script>
+</body>
+</html>
