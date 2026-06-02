@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IGI - Manage Attendance</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Supabase JS Client library -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.js"></script>
     <style>
         :root {
             --bg-color: #f4f6f9;
@@ -94,6 +93,13 @@
             box-sizing: border-box;
         }
 
+        /* Time Picker Row Styles */
+        .time-picker-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
         .btn-submit {
             width: 100%;
             background-color: var(--accent);
@@ -145,8 +151,21 @@
         }
 
         .record-info span {
+            display: block;
             font-size: 12px;
             color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .time-badge {
+            font-size: 11px;
+            color: #1e3a8a;
+            background: #e0f2fe;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 4px;
+            font-weight: 600;
         }
 
         .status-badge {
@@ -164,16 +183,13 @@
 </head>
 <body>
 
-    <!-- Top Header Navigation -->
     <header>
-        <!-- Back to Dashboard Link -->
         <a href="./index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
         <h1>Manage Attendance</h1>
     </header>
 
     <div class="container">
         
-        <!-- Attendance Data Input Card -->
         <div class="card">
             <h3 style="margin-top: 0; color: var(--primary);"><i class="fa-solid fa-pen-to-square"></i> Add Daily Report</h3>
             <form id="attendanceForm">
@@ -191,16 +207,26 @@
                     </select>
                 </div>
 
-                <!-- Input fields for hours -->
+                <div id="timeFields" class="time-picker-row form-group">
+                    <div>
+                        <label for="startTime">Duty Start Time</label>
+                        <input type="time" id="startTime" class="form-control" value="07:00" onchange="calculateAutomaticHours()">
+                    </div>
+                    <div>
+                        <label for="endTime">Duty End Time</label>
+                        <input type="time" id="endTime" class="form-control" value="19:00" onchange="calculateAutomaticHours()">
+                    </div>
+                </div>
+
                 <div id="hoursFields">
                     <div class="form-group">
                         <label for="regHours">Regular Duty Hours</label>
-                        <input type="number" id="regHours" class="form-control" min="0" max="24" step="0.5" value="8">
+                        <input type="number" id="regHours" class="form-control" min="0" max="24" step="0.5" value="8" readonly>
                     </div>
 
                     <div class="form-group">
                         <label for="otHours">Overtime (OT) Hours</label>
-                        <input type="number" id="otHours" class="form-control" min="0" max="24" step="0.5" value="0">
+                        <input type="number" id="otHours" class="form-control" min="0" max="24" step="0.5" value="4" readonly>
                     </div>
                 </div>
 
@@ -208,7 +234,6 @@
             </form>
         </div>
 
-        <!-- Attendance Logs / History List -->
         <div class="history-title"><i class="fa-solid fa-clock-rotate-left"></i> Recent Attendance Logs</div>
         <div id="attendanceList">
             <p style="text-align: center; color: var(--text-muted);">Loading logs...</p>
@@ -226,22 +251,107 @@
         // Form loads with today's date automatically
         document.getElementById('date').valueAsDate = new Date();
 
-        // Logic to hide or reset input hours when Absent is active
+        // YYYY-MM-DD ফরম্যাটকে dd/mm/yy ফরম্যাটে রূপান্তর করার হেল্পার ফাংশন
+        function formatToDDMMYY(dateString) {
+            if (!dateString) return '';
+            let parts = dateString.split('-');
+            if (parts.length !== 3) return dateString;
+            let year = parts[0].slice(-2); // বছরের শেষ ২ ডিজিট নেওয়ার জন্য (যেমন: 2026 থেকে 26)
+            let month = parts[1];
+            let day = parts[2];
+            return `${day}/${month}/${year}`;
+        }
+
+        // 24-Hour ফরম্যাটকে সুন্দর 12-Hour (AM/PM) ফরম্যাটে কনভার্ট করার হেল্পার ফাংশন
+        function formatTo12Hour(timeString) {
+            if (!timeString) return '';
+            let [hours, minutes] = timeString.split(':');
+            hours = parseInt(hours);
+            let ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // 0 হয়ে গেলে সেটা 12 হবে
+            hours = hours < 10 ? '0' + hours : hours;
+            return `${hours}:${minutes} ${ampm}`;
+        }
+
+        // টাইম ইনপুটের ওপর ভিত্তি করে অটোমেটিক রেগুলার ও ওটি আওয়ার ক্যালকুলেশন ফাংশন
+        function calculateAutomaticHours() {
+            const shift = document.getElementById('shift').value;
+            if (shift === 'Absent') return;
+
+            const startTimeVal = document.getElementById('startTime').value;
+            const endTimeVal = document.getElementById('endTime').value;
+
+            if (!startTimeVal || !endTimeVal) return;
+
+            // টাইম স্ট্রিং থেকে আওয়ার এবং মিনিট আলাদা করা
+            let [startHours, startMinutes] = startTimeVal.split(':').map(Number);
+            let [endHours, endMinutes] = endTimeVal.split(':').map(Number);
+
+            // মিনিটকে ডেসিমাল আওয়ারে কনভার্ট করা (যেমন: ৩০ মিনিট = 0.5 ঘণ্টা)
+            let startDecimal = startHours + (startMinutes / 60);
+            let endDecimal = endHours + (endMinutes / 60);
+
+            let totalHours = 0;
+
+            if (endDecimal >= startDecimal) {
+                // একই দিনের মধ্যে ডিউটি শেষ হলে (Day Shift)
+                totalHours = endDecimal - startDecimal;
+            } else {
+                // ডিউটি পরের দিনে গড়ালে (Night Shift: উদা- 19:00 থেকে 07:00)
+                totalHours = (24 - startDecimal) + endDecimal;
+            }
+
+            // রাউন্ড ফিগার করা (দশমিকের পর এক ঘর রাখার জন্য)
+            totalHours = Math.round(totalHours * 10) / 10;
+
+            let regHours = 0;
+            let otHours = 0;
+
+            if (totalHours > 0) {
+                if (totalHours <= 8) {
+                    regHours = totalHours;
+                    otHours = 0;
+                } else {
+                    regHours = 8;
+                    otHours = totalHours - 8;
+                }
+            }
+
+            // ইনপুট বক্সে ভ্যালু অটোমেটিক বসানো
+            document.getElementById('regHours').value = regHours;
+            document.getElementById('otHours').value = otHours;
+        }
+
+        // Auto change Watch Clock and Hours Suggestions based on Shift
         function toggleHours() {
             const shift = document.getElementById('shift').value;
             const hoursFields = document.getElementById('hoursFields');
+            const timeFields = document.getElementById('timeFields');
+            
             if (shift === 'Absent') {
                 hoursFields.style.display = 'none';
+                timeFields.style.display = 'none';
                 document.getElementById('regHours').value = 0;
                 document.getElementById('otHours').value = 0;
             } else {
-                hoursFields.style.display = 'block';
-                document.getElementById('regHours').value = 8;
-                document.getElementById('otHours').value = 0;
+                hoursFields.style.display = 'grid';
+                timeFields.style.display = 'grid';
+                
+                if(shift === 'Night') {
+                    document.getElementById('startTime').value = "19:00"; // 07:00 PM
+                    document.getElementById('endTime').value = "07:00";   // 07:00 AM
+                } else {
+                    document.getElementById('startTime').value = "07:00"; // 07:00 AM
+                    document.getElementById('endTime').value = "19:00";   // 07:00 PM
+                }
+                
+                // শিফট চেঞ্জ হওয়ার পর পুনরায় টাইম হিসাব করা
+                calculateAutomaticHours();
             }
         }
 
-        // Fetch logs directly from Supabase DB using snake_case columns
+        // Fetch logs directly from Supabase DB
         async function fetchAttendanceLogs() {
             try {
                 let { data: logs, error } = await _supabase
@@ -268,10 +378,20 @@
                     if(log.shift === 'Night') badgeClass = 'badge-night';
                     if(log.shift === 'Absent') badgeClass = 'badge-absent';
 
+                    // ডিসপ্লে-তে সুন্দরভাবে ১২ ঘণ্টার ফরম্যাটে টাইম শো করানো
+                    let timeInfoHTML = '';
+                    if(!isAbsent && log.start_time && log.end_time) {
+                        timeInfoHTML = `<div class="time-badge"><i class="fa-solid fa-clock"></i> ${log.start_time} to ${log.end_time}</div>`;
+                    }
+
+                    // তারিখটিকে dd/mm/yy ফরম্যাটে কনভার্ট করে শো করানো হচ্ছে
+                    let formattedDate = formatToDDMMYY(log.date);
+
                     itemDiv.innerHTML = `
                         <div class="record-info">
-                            <div>${log.date}</div>
+                            <div>${formattedDate}</div>
                             <span>Reg: ${log.reg_hours} hrs | OT: ${log.ot_hours} hrs</span>
+                            ${timeInfoHTML}
                         </div>
                         <span class="status-badge ${badgeClass}">${log.shift}</span>
                     `;
@@ -284,7 +404,7 @@
             }
         }
 
-        // Form Submit Handler to push data to Supabase using snake_case column layout
+        // Form Submit Handler
         document.getElementById('attendanceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -292,14 +412,25 @@
             const shift = document.getElementById('shift').value;
             const reg_hours = parseFloat(document.getElementById('regHours').value || 0);
             const ot_hours = parseFloat(document.getElementById('otHours').value || 0);
+            
+            let start_time = null;
+            let end_time = null;
+
+            if (shift !== 'Absent') {
+                const rawStart = document.getElementById('startTime').value;
+                const rawEnd = document.getElementById('endTime').value;
+
+                // ওয়াচ ইনপুটের ২৪ ঘণ্টার ডাটাকে ডাটাবেজের জন্য "07:00 AM" বা "07:00 PM" টেক্সটে রূপান্তর
+                start_time = formatTo12Hour(rawStart);
+                end_time = formatTo12Hour(rawEnd);
+            }
 
             try {
                 const { error } = await _supabase
                     .from('igi_attendance')
-                    .insert([{ date, shift, reg_hours, ot_hours }]);
+                    .insert([{ date, shift, reg_hours, ot_hours, start_time, end_time }]);
 
                 if (error) {
-                    // Check for duplicate date primary key block
                     if(error.code === '23505') { 
                         alert('This date already has a registered entry!');
                     } else {
@@ -315,7 +446,7 @@
             }
         });
 
-        // Initialize table content on component mounts
+        // Initialize table content
         fetchAttendanceLogs();
     </script>
 </body>
