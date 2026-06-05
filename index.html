@@ -210,6 +210,31 @@
                 left: 0; top: 0; width: 100%;
             }
         }
+        
+        /* Logout Button Custom Styling */
+        .logout-container-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logout-action-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+        .logout-action-btn:hover {
+            background: var(--danger);
+            border-color: var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -219,7 +244,10 @@
             <i class="fa-solid fa-building-shield"></i>
             <h1>IGI-SARIF UDDIN MONDAL</h1>
         </div>
-        <div style="font-size: 12px; font-weight: 600;">26 Days Base</div>
+        <div class="logout-container-header">
+            <div style="font-size: 12px; font-weight: 600;">26 Days Base</div>
+            <button class="logout-action-btn" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+        </div>
     </header>
 
     <div class="container">
@@ -309,6 +337,22 @@
         let globalRecords = []; 
         let currentCycleStart = "";
         let currentCycleEnd = "";
+
+        // সিকিউরিটি লজিক: ইউজার লগইন ছাড়া পেজে ঢুকলে সরাসরি auth.html এ ট্রান্সফার করবে
+        async function checkUserAuthentication() {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (!session) {
+                window.location.href = "./auth.html";
+            } else {
+                calculateDashboardData();
+            }
+        }
+
+        // লগআউট হ্যান্ডেলার ফাংশন
+        async function handleLogout() {
+            await _supabase.auth.signOut();
+            window.location.href = "./auth.html";
+        }
 
         // ২২ থেকে ২২ তারিখের সাইকেল ক্যালকুলেশন
         function calculateCurrentCycle() {
@@ -494,18 +538,4 @@
                         <p style="margin:4px 0; font-size:14px; color:#ef4444;"><b>Total Leaves (Absent):</b> ${pLeaves} Days</p>
                         <p style="margin:4px 0; font-size:14px;"><b>Total Duty Hours:</b> ${pRegHours} hrs</p>
                         <p style="margin:4px 0; font-size:14px;"><b>Total OT Hours:</b> ${pOtHours} hrs</p>
-                        <p style="margin:4px 0; font-size:14px;"><b>Total OT Money:</b> ₹${otMoney.toFixed(2)}</p>
-                        <hr style="border-top:1px dashed #ccc;">
-                        <p style="margin:4px 0; font-size:16px; color:#10b981;"><b>Gross Total (Salary+OT):</b> ₹${totalMoney.toFixed(2)}</p>
-                    </div>
-                </div>
-            `;
-
-            closeReportModal();
-            window.print();
-        }
-
-        calculateDashboardData();
-    </script>
-</body>
-</html>
+                        <p style="margin:4px 0; font-size:14px;"><b>Total OT Money:</b> ₹${otMoney.toFixed
