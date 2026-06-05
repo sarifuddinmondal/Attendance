@@ -23,6 +23,7 @@
             color: var(--text-main);
             margin: 0;
             padding: 0;
+            display: none; /* সেশন চেক হওয়ার আগে স্ক্রিন হাইড রাখার জন্য */
         }
 
         header {
@@ -211,26 +212,76 @@
             }
         }
         
-        /* Logout Button Custom Styling */
-        .logout-container-header {
+        /* 👤 Header Right Side Profile UX UI Elements */
+        .header-right-panel {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 15px;
         }
+
+        .profile-bubble {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.12);
+            padding: 5px 12px;
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .profile-bubble img {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1.5px solid var(--accent);
+            background-color: #e2e8f0;
+        }
+
+        .profile-bubble .no-img-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 15px;
+            border: 1.5px solid var(--accent);
+        }
+
+        .profile-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-text .user-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .profile-text .user-email {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
         .logout-action-btn {
             background: rgba(255, 255, 255, 0.15);
             color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.25);
             padding: 6px 12px;
             border-radius: 20px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             transition: background 0.2s;
         }
+
         .logout-action-btn:hover {
             background: var(--danger);
             border-color: var(--danger);
@@ -244,8 +295,10 @@
             <i class="fa-solid fa-building-shield"></i>
             <h1>IGI-SARIF UDDIN MONDAL</h1>
         </div>
-        <div class="logout-container-header">
-            <div style="font-size: 12px; font-weight: 600;">26 Days Base</div>
+        
+        <!-- ডানদিকের প্রোফাইল ও লগআউট কন্টেইনার প্যানেল -->
+        <div class="header-right-panel">
+            <div id="userProfileArea"></div>
             <button class="logout-action-btn" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
         </div>
     </header>
@@ -322,6 +375,50 @@
     <div id="printSection"></div>
 
     <script>
+        // 🔒 সেশন ভেরিফিকেশন ও সিকিউরিটি রানার ফাংশন
+        function checkUserAuthentication() {
+            const currentSessionData = localStorage.getItem('current_employee');
+            
+            // যদি এমপ্লয়ি সেশন না থাকে তবে সরাসরি employee-login.html এ রিডাইরেক্ট করবে
+            if (!currentSessionData) {
+                window.location.href = "./employee-login.html";
+                return;
+            }
+
+            // সেশন থাকলে পেজ ভিউ আনলক করবে এবং প্রোফাইল ডাটা দেখাবে
+            document.body.style.display = "block";
+            
+            const employee = JSON.parse(currentSessionData);
+            const profileArea = document.getElementById('userProfileArea');
+            
+            const imageSrc = employee.image_url || employee.image_path || "";
+            const avatarHTML = imageSrc 
+                ? `<img src="${imageSrc}" alt="emp">`
+                : `<div class="no-img-icon"><i class="fa-solid fa-user"></i></div>`;
+
+            profileArea.innerHTML = `
+                <div class="profile-bubble">
+                    ${avatarHTML}
+                    <div class="profile-text">
+                        <span class="user-name">${employee.name || 'Employee'}</span>
+                        <span class="user-email">${employee.email || ''}</span>
+                    </div>
+                </div>
+            `;
+            
+            // ড্যাশবোর্ড ডাটা ক্যালকুলেট করার মূল ফাংশন রান করা
+            calculateDashboardData();
+        }
+
+        // 🚪 লগআউট হ্যান্ডেলার ফাংশন
+        function handleLogout() {
+            localStorage.removeItem('current_employee');
+            window.location.href = "./employee-login.html";
+        }
+
+        // স্ক্রিপ্ট চালুর শুরুতেই সেশন চেক রান করা হবে
+        checkUserAuthentication();
+
         const SUPABASE_URL = "https://vkwxheddyagpjbsrovgh.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrd3hoZWRkeWFncGpic3JvdmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDM2NjEsImV4cCI6MjA5MDcxOTY2MX0.KN_JLY2owScvkGVy2inJIkEzW82_Qb2a1cavcRJFzlA";
         
@@ -337,33 +434,6 @@
         let globalRecords = []; 
         let currentCycleStart = "";
         let currentCycleEnd = "";
-
-        // সিকিউরিটি লজিক ফিক্সড: ট্রাই-ক্যাচ ব্লক যোগ করা হয়েছে যাতে কোনো এরর হলে ডাটা লোড বন্ধ না হয়
-        async function checkUserAuthentication() {
-            try {
-                const { data, error } = await _supabase.auth.getSession();
-                if (error || !data || !data.session) {
-                    window.location.href = "./auth.html";
-                } else {
-                    // সেশন ঠিক থাকলে ডাটা ক্যালকুলেট করা শুরু হবে
-                    await calculateDashboardData();
-                }
-            } catch (authError) {
-                console.error("Auth check failed, trying to load data anyway:", authError);
-                // সেফটি নেট হিসেবে সেশন এরর খেলেও ড্যাশবোর্ড ডাটা লোড করার চেষ্টা করবে
-                await calculateDashboardData();
-            }
-        }
-
-        // লগআউট হ্যান্ডেলার ফাংশন
-        async function handleLogout() {
-            try {
-                await _supabase.auth.signOut();
-            } catch (e) {
-                console.error(e);
-            }
-            window.location.href = "./auth.html";
-        }
 
         // ২২ থেকে ২২ তারিখের সাইকেল ক্যালকুলেশন
         function calculateCurrentCycle() {
@@ -449,7 +519,6 @@
                 
             } catch (err) {
                 console.error(err.message);
-                // Connecting টেক্সট সরিয়ে এরর মেসেজ দেখানো
                 document.getElementById('totalDays').innerText = "Error";
                 document.getElementById('totalLeaves').innerText = "Error";
                 document.getElementById('totalDutyHours').innerText = "Error";
@@ -516,62 +585,4 @@
 
                 tableRows += `
                     <tr>
-                        <td style="border:1px solid #ddd; padding:8px;">${formattedDate}</td>
-                        <td style="border:1px solid #ddd; padding:8px; ${r.shift === 'Absent' ? 'color: red; font-weight: bold;' : ''}">${r.shift}</td>
-                        <td style="border:1px solid #ddd; padding:8px;">${displayStart}</td>
-                        <td style="border:1px solid #ddd; padding:8px;">${displayEnd}</td>
-                        <td style="border:1px solid #ddd; padding:8px;">${r.reg_hours} hrs</td>
-                        <td style="border:1px solid #ddd; padding:8px;">${r.ot_hours} hrs</td>
-                    </tr>
-                `;
-            });
-
-            let baseSalaryMoney = pDays * PER_DAY_SALARY;
-            let otMoney = pOtHours * PER_HOUR_RATE;
-            let totalMoney = baseSalaryMoney + otMoney;
-
-            const printSection = document.getElementById('printSection');
-            printSection.innerHTML = `
-                <div style="padding:20px; font-family:sans-serif; color:#1f2937;">
-                    <h2 style="color:#1e3a8a; text-align:center; margin-bottom:5px;">IGI SYSTEM REPORT</h2>
-                    <p style="text-align:center; margin-top:0; color:#6b7280;">Date Range: ${formatToDDMMYY(start)} to ${formatToDDMMYY(end)}</p>
-                    <hr style="border:1px solid #1e3a8a; margin-bottom:20px;">
-                    
-                    <table style="width:100%; border-collapse:collapse; margin-bottom:25px;">
-                        <thead>
-                            <tr style="background-color:#1e3a8a; color:white; text-align:left;">
-                                <th style="padding:10px; border:1px solid #ddd;">Date</th>
-                                <th style="padding:10px; border:1px solid #ddd;">Shift</th>
-                                <th style="padding:10px; border:1px solid #ddd;">Start Time</th>
-                                <th style="padding:10px; border:1px solid #ddd;">End Time</th>
-                                <th style="padding:10px; border:1px solid #ddd;">Regular Hours</th>
-                                <th style="padding:10px; border:1px solid #ddd;">OT Hours</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tableRows}
-                        </tbody>
-                    </table>
-
-                    <div style="background:#f4f6f9; padding:15px; border-radius:8px; width:60%; margin-left:auto;">
-                        <h4 style="margin:0 0 10px 0; color:#1e3a8a;">Summary Statement:</h4>
-                        <p style="margin:4px 0; font-size:14px;"><b>Total Active Days:</b> ${pDays} Days</p>
-                        <p style="margin:4px 0; font-size:14px; color:#ef4444;"><b>Total Leaves (Absent):</b> ${pLeaves} Days</p>
-                        <p style="margin:4px 0; font-size:14px;"><b>Total Duty Hours:</b> ${pRegHours} hrs</p>
-                        <p style="margin:4px 0; font-size:14px;"><b>Total OT Hours:</b> ${pOtHours} hrs</p>
-                        <p style="margin:4px 0; font-size:14px;"><b>Total OT Money:</b> ₹${otMoney.toFixed(2)}</p>
-                        <hr style="border-top:1px dashed #ccc;">
-                        <p style="margin:4px 0; font-size:16px; color:#10b981;"><b>Gross Total (Salary+OT):</b> ₹${totalMoney.toFixed(2)}</p>
-                    </div>
-                </div>
-            `;
-
-            closeReportModal();
-            window.print();
-        }
-
-        // রান করার মূল পয়েন্টার
-        checkUserAuthentication();
-    </script>
-</body>
-</html>
+                        <td style="border:1px so
