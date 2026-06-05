@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGI SYSTEM - Employee List</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --primary: #1e3a8a;
+            --accent: #10b981;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --danger: #ef4444;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: none; /* শুরুতে হাইড থাকবে, অথেনটিকেশন চেক সফল হলে শো করবে */
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 20px;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 0 15px;
+        }
+
+        .list-card {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .card-header-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+        }
+
+        /* Table Responsive Wrapper */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8fafc;
+            color: var(--primary);
+            padding: 14px 16px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+            font-size: 14px;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 15px;
+            vertical-align: middle;
+        }
+
+        tr:hover {
+            background-color: #f8fafc;
+        }
+
+        /* Profile Image Bubble */
+        .emp-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--border-color);
+            background-color: #e2e8f0;
+        }
+
+        .no-avatar-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+        }
+
+        /* Loading Spinner */
+        .loading-box {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .loading-box i {
+            font-size: 30px;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        /* Buttons */
+        .back-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .add-btn {
+            background-color: var(--accent);
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .add-btn:hover {
+            background-color: #059669;
+        }
+
+        .logout-action-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .logout-action-btn:hover {
+            background: var(--danger);
+            border-color: var(--danger);
+        }
+        
+        .empty-msg {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1><i class="fa-solid fa-users-gear"></i> Management Panel</h1>
+        <div class="header-actions">
+            <a href="./admin.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Admin Form</a>
+            <button class="logout-action-btn" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="list-card">
+            <div class="card-header-area">
+                <h2 class="card-title"><i class="fa-solid fa-users"></i> Registered Employee List</h2>
+                <a href="./admin.html" class="add-btn"><i class="fa-solid fa-plus"></i> Add Employee</a>
+            </div>
+
+            <!-- লোডিং স্ক্রিন -->
+            <div id="loadingBox" class="loading-box">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                <div>Fetching employees data from Supabase...</div>
+            </div>
+
+            <!-- মেইন টেবিল এরিয়া -->
+            <div class="table-responsive" id="tableContainer" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Photo</th>
+                            <th>Name</th>
+                            <th>Mobile</th>
+                            <th>Gmail / Email</th>
+                            <th>Password</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeeTableBody">
+                        <!-- জাভাস্ক্রিপ্টের মাধ্যমে ডাটা এখানে ইনসার্ট হবে -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // সুপাবেস ক্রেডেনশিয়ালস
+        const SUPABASE_URL = "https://vkwxheddyagpjbsrovgh.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrd3hoZWRkeWFncGpic3JvdmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDM2NjEsImV4cCI6MjA5MDcxOTY2MX0.KN_JLY2owScvkGVy2inJIkEzW82_Qb2a1cavcRJFzlA";
+        
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // 🔒 সিকিউরিটি চেক: লগইন সেশন না থাকলে রিডাইরেক্ট করবে
+        async function checkAuthentication() {
+            try {
+                const { data, error } = await _supabase.auth.getSession();
+                if (error || !data || !data.session) {
+                    window.location.href = "./auth.html";
+                } else {
+                    document.body.style.display = "block";
+                    // সেশন ভ্যালিড থাকলে ডাটা লোড করা শুরু করবে
+                    fetchEmployees();
+                }
+            } catch (err) {
+                console.error(err);
+                window.location.href = "./auth.html";
+            }
+        }
+
+        // 🚪 লগআউট ফাংশন
+        async function handleLogout() {
+            try {
+                await _supabase.auth.signOut();
+            } catch (e) {
+                console.error(e);
+            }
+            window.location.href = "./auth.html";
+        }
+
+        // 🔄 সুpabase থেকে ডাটা রিড করার ফাংশন
+        async function fetchEmployees() {
+            const tableBody = document.getElementById('employeeTableBody');
+            const loadingBox = document.getElementById('loadingBox');
+            const tableContainer = document.getElementById('tableContainer');
+
+            try {
+                // igi_employees টেবিল থেকে সব ডাটা লেটেস্ট আইডি অনুযায়ী নামানো হচ্ছে
+                const { data: employees, error } = await _supabase
+                    .from('igi_employees')
+                    .select('*')
+                    .order('id', { ascending: false });
+
+                if (error) throw error;
+
+                tableBody.innerHTML = ""; // আগের ডামি রো থাকলে ক্লিয়ার করা
+
+                if (!employees || employees.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" class="empty-msg">No employee data found in database.</td></tr>`;
+                } else {
+                    // লুপ চালিয়ে টেবিলে ডাটা পুশ করা
+                    employees.forEach(emp => {
+                        const row = document.createElement('tr');
+
+                        // ছবির লজিক (ছবি না থাকলে আইকন দেখাবে)
+                        const avatarHTML = emp.image_url 
+                            ? `<img src="${emp.image_url}" class="emp-avatar" alt="profile">`
+                            : `<div class="no-avatar-icon"><i class="fa-solid fa-user"></i></div>`;
+
+                        row.innerHTML = `
+                            <td>${avatarHTML}</td>
+                            <td><strong>${emp.name || 'N/A'}</strong></td>
+                            <td>${emp.mobile || 'N/A'}</td>
+                            <td>${emp.email || 'N/A'}</td>
+                            <td><code>${emp.password || '••••••••'}</code></td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+
+                // লোডার হাইড করে টেবিল শো করা
+                loadingBox.style.display = "none";
+                tableContainer.style.display = "block";
+
+            } catch (err) {
+                console.error("Error fetching data:", err);
+                loadingBox.innerHTML = `<i class="fa-solid fa-circle-exclamation" style="color:var(--danger)"></i>
+                                        <div style="color:var(--danger)">Failed to load data: ${err.message}</div>`;
+            }
+        }
+
+        // পেজ ওপেন হলেই অথেনটিকেশন চেক রান হবে
+        checkAuthentication();
+    </script>
+</body>
+</html>
