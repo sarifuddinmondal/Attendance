@@ -15,6 +15,7 @@
             --text-main: #1f2937;
             --text-muted: #6b7280;
             --danger: #ef4444;
+            --info: #3b82f6;
         }
 
         body {
@@ -62,6 +63,56 @@
             padding: 30px;
             border-radius: 15px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        /* 📱 App Card Styles */
+        .app-link-card {
+            background: linear-gradient(135deg, #2563eb, #1e3a8a);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .app-link-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .app-card-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .app-card-info i {
+            font-size: 28px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            border-radius: 10px;
+        }
+
+        .app-card-text h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .app-card-text p {
+            margin: 4px 0 0 0;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .app-link-card .arrow-icon {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
         }
 
         .card-title {
@@ -221,6 +272,26 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
+        /* 👥 Employee List Top Button Styles */
+        .list-btn-top {
+            color: white;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--info);
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background 0.2s;
+        }
+
+        .list-btn-top:hover {
+            background: #2563eb;
+        }
+
         .logout-action-btn {
             background: rgba(255, 255, 255, 0.15);
             color: white;
@@ -247,11 +318,30 @@
         <h1><i class="fa-solid fa-user-gear"></i> Admin Panel</h1>
         <div class="header-actions">
             <a href="./index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Dashboard</a>
+            
+            <!-- 👥 Header-এ Employee List বোতাম -->
+            <a href="./employee-list.html" class="list-btn-top"><i class="fa-solid fa-users"></i> Employee List</a>
+            
             <button class="logout-action-btn" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
         </div>
     </header>
 
     <div class="container">
+        
+        <!-- 📱 নতুন যুক্ত করা App Card (ফর্মের উপরে সরাসরি ক্লিক করার জন্য) -->
+        <a href="./employee-list.html" class="app-link-card">
+            <div class="app-card-info">
+                <i class="fa-solid fa-users-viewfinder"></i>
+                <div class="app-card-text">
+                    <h3>View Employee List</h3>
+                    <p>Check all registered employees data</p>
+                </div>
+            </div>
+            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+        </a>
+        
+        <br>
+
         <div class="admin-card">
             <div class="card-title">
                 <i class="fa-solid fa-user-plus"></i> Add New Employee
@@ -455,4 +545,3 @@
     </script>
 </body>
 </html>
-
