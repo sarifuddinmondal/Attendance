@@ -338,19 +338,30 @@
         let currentCycleStart = "";
         let currentCycleEnd = "";
 
-        // সিকিউরিটি লজিক: ইউজার লগইন ছাড়া পেজে ঢুকলে সরাসরি auth.html এ ট্রান্সফার করবে
+        // সিকিউরিটি লজিক ফিক্সড: ট্রাই-ক্যাচ ব্লক যোগ করা হয়েছে যাতে কোনো এরর হলে ডাটা লোড বন্ধ না হয়
         async function checkUserAuthentication() {
-            const { data: { session } } = await _supabase.auth.getSession();
-            if (!session) {
-                window.location.href = "./auth.html";
-            } else {
-                calculateDashboardData();
+            try {
+                const { data, error } = await _supabase.auth.getSession();
+                if (error || !data || !data.session) {
+                    window.location.href = "./auth.html";
+                } else {
+                    // সেশন ঠিক থাকলে ডাটা ক্যালকুলেট করা শুরু হবে
+                    await calculateDashboardData();
+                }
+            } catch (authError) {
+                console.error("Auth check failed, trying to load data anyway:", authError);
+                // সেফটি নেট হিসেবে সেশন এরর খেলেও ড্যাশবোর্ড ডাটা লোড করার চেষ্টা করবে
+                await calculateDashboardData();
             }
         }
 
         // লগআউট হ্যান্ডেলার ফাংশন
         async function handleLogout() {
-            await _supabase.auth.signOut();
+            try {
+                await _supabase.auth.signOut();
+            } catch (e) {
+                console.error(e);
+            }
             window.location.href = "./auth.html";
         }
 
@@ -438,7 +449,12 @@
                 
             } catch (err) {
                 console.error(err.message);
-                alert("Connection failed.");
+                // Connecting টেক্সট সরিয়ে এরর মেসেজ দেখানো
+                document.getElementById('totalDays').innerText = "Error";
+                document.getElementById('totalLeaves').innerText = "Error";
+                document.getElementById('totalDutyHours').innerText = "Error";
+                document.getElementById('totalOtHours').innerText = "Error";
+                alert("Database connection failed. Please check your internet or Supabase tables.");
             }
         }
 
@@ -467,6 +483,11 @@
 
             if(!start || !end) {
                 alert("Please select both dates!");
+                return;
+            }
+
+            if (!globalRecords || globalRecords.length === 0) {
+                alert("No records loaded from database yet!");
                 return;
             }
 
@@ -538,4 +559,19 @@
                         <p style="margin:4px 0; font-size:14px; color:#ef4444;"><b>Total Leaves (Absent):</b> ${pLeaves} Days</p>
                         <p style="margin:4px 0; font-size:14px;"><b>Total Duty Hours:</b> ${pRegHours} hrs</p>
                         <p style="margin:4px 0; font-size:14px;"><b>Total OT Hours:</b> ${pOtHours} hrs</p>
-                        <p style="margin:4px 0; font-size:14px;"><b>Total OT Money:</b> ₹${otMoney.toFixed
+                        <p style="margin:4px 0; font-size:14px;"><b>Total OT Money:</b> ₹${otMoney.toFixed(2)}</p>
+                        <hr style="border-top:1px dashed #ccc;">
+                        <p style="margin:4px 0; font-size:16px; color:#10b981;"><b>Gross Total (Salary+OT):</b> ₹${totalMoney.toFixed(2)}</p>
+                    </div>
+                </div>
+            `;
+
+            closeReportModal();
+            window.print();
+        }
+
+        // রান করার মূল পয়েন্টার
+        checkUserAuthentication();
+    </script>
+</body>
+</html>
