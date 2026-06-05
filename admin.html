@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGI SYSTEM - Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --primary: #1e3a8a;
+            --accent: #10b981;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: none; /* শুরুতে পুরো বডি হাইড থাকবে, অথেনটিকেশন সফল হলে শো করবে */
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 20px;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 30px auto;
+            padding: 0 15px;
+        }
+
+        .admin-card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 25px;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-main);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 12px 12px 38px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 15px;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Image Upload Box Styles */
+        .image-upload-box {
+            border: 2px dashed #cbd5e1;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            background: #f8fafc;
+            position: relative;
+            transition: background 0.2s;
+        }
+
+        .image-upload-box:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+        }
+
+        .image-upload-box i {
+            font-size: 30px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .image-upload-box p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        #imagePreview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-top: 10px;
+            display: none;
+            border: 2px solid var(--primary);
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 13px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+            transition: background 0.2s;
+            margin-top: 25px;
+        }
+
+        .btn-submit:hover {
+            background-color: #059669;
+        }
+
+        .btn-submit:disabled {
+            background-color: var(--text-muted);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Message Styles */
+        .status-msg {
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-msg.success {
+            background-color: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+            display: flex;
+        }
+        .status-msg.error {
+            background-color: #fef2f2;
+            color: var(--danger);
+            border: 1px solid #fca5a5;
+            display: flex;
+        }
+        
+        .back-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logout-action-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+        .logout-action-btn:hover {
+            background: var(--danger);
+            border-color: var(--danger);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1><i class="fa-solid fa-user-gear"></i> Admin Panel</h1>
+        <div class="header-actions">
+            <a href="./index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Dashboard</a>
+            <button class="logout-action-btn" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="admin-card">
+            <div class="card-title">
+                <i class="fa-solid fa-user-plus"></i> Add New Employee
+            </div>
+
+            <!-- সাকসেস বা এরর মেসেজ দেখানোর বক্স -->
+            <div id="statusMessage" class="status-msg"></div>
+
+            <form id="employeeForm" onsubmit="saveEmployeeData(event)">
+                
+                <!-- Employee Name -->
+                <div class="form-group">
+                    <label>Employee Name</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="empName" class="form-control" placeholder="Enter full name" required>
+                    </div>
+                </div>
+
+                <!-- Mobile Number -->
+                <div class="form-group">
+                    <label>Mobile Number</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-phone"></i>
+                        <input type="tel" id="empMobile" class="form-control" placeholder="Enter mobile number" required>
+                    </div>
+                </div>
+
+                <!-- Gmail/Email -->
+                <div class="form-group">
+                    <label>Gmail / Email Address</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-envelope"></i>
+                        <input type="email" id="empEmail" class="form-control" placeholder="Enter email address" required>
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div class="form-group">
+                    <label>System Password</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="empPassword" class="form-control" placeholder="Create password" required>
+                    </div>
+                </div>
+
+                <!-- Image Upload Section -->
+                <div class="form-group">
+                    <label>Upload Employee Image</label>
+                    <div class="image-upload-box" onclick="document.getElementById('empImage').click()">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <p>Click here to upload image (JPG/PNG)</p>
+                        <input type="file" id="empImage" accept="image/*" style="display: none;" onchange="previewFile()">
+                        <center><img id="imagePreview" alt="Preview"></center>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <button type="submit" id="saveBtn" class="btn-submit">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Employee Data
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // সুপাবেস ক্রেডেনশিয়ালস
+        const SUPABASE_URL = "https://vkwxheddyagpjbsrovgh.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrd3hoZWRkeWFncGpic3JvdmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDM2NjEsImV4cCI6MjA5MDcxOTY2MX0.KN_JLY2owScvkGVy2inJIkEzW82_Qb2a1cavcRJFzlA";
+        
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // 🔒 সিকিউরিটি চেক: পেজ খোলার সাথে সাথে চেক করবে ইউজার লগইন আছে কিনা
+        async function checkAdminAuthentication() {
+            try {
+                const { data, error } = await _supabase.auth.getSession();
+                if (error || !data || !data.session) {
+                    // লগইন সেশন না থাকলে সরাসরি auth.html এ পাঠিয়ে দেবে
+                    window.location.href = "./auth.html";
+                } else {
+                    // লগইন থাকলে স্ক্রিন শো করবে
+                    document.body.style.display = "block";
+                }
+            } catch (err) {
+                console.error("Auth check failed:", err);
+                window.location.href = "./auth.html";
+            }
+        }
+
+        // 🚪 লগআউট ফাংশন
+        async function handleLogout() {
+            try {
+                await _supabase.auth.signOut();
+            } catch (e) {
+                console.error(e);
+            }
+            window.location.href = "./auth.html";
+        }
+
+        // আপলোডের আগে ইমেজের প্রিভিউ স্ক্রিনে দেখানো
+        function previewFile() {
+            const file = document.getElementById('empImage').files[0];
+            const preview = document.getElementById('imagePreview');
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onloadend = function () {
+                    preview.src = reader.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                preview.src = "";
+                preview.style.display = 'none';
+            }
+        }
+
+        // মেসেজ বক্স হ্যান্ডেলার ফাংশন
+        function showStatus(text, type) {
+            const msgBox = document.getElementById('statusMessage');
+            msgBox.className = `status-msg ${type}`;
+            msgBox.innerHTML = type === 'success' 
+                ? `<i class="fa-solid fa-circle-check"></i> ${text}`
+                : `<i class="fa-solid fa-circle-exclamation"></i> ${text}`;
+            msgBox.style.display = 'flex';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ডাটাবেজে ডাটা সেভ করার ফাংশন
+        async function saveEmployeeData(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('empName').value.trim();
+            const mobile = document.getElementById('empMobile').value.trim();
+            const email = document.getElementById('empEmail').value.trim();
+            const password = document.getElementById('empPassword').value.trim();
+            const imageFile = document.getElementById('empImage').files[0];
+            const saveBtn = document.getElementById('saveBtn');
+
+            // লোডিং স্টেট অ্যাক্টিভ করা
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+            document.getElementById('statusMessage').style.display = 'none';
+
+            let imageUrl = "";
+
+            try {
+                // ১. যদি ইমেজ সিলেক্ট করা থাকে তবে প্রথমে সুপাবেস Storage এ আপলোড হবে
+                if (imageFile) {
+                    const fileExt = imageFile.name.split('.').pop();
+                    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+                    const filePath = `profiles/${fileName}`;
+
+                    // 'employee-images' বাকেটে ইমেজ আপলোড হচ্ছে
+                    let { error: uploadError, data: uploadData } = await _supabase.storage
+                        .from('employee-images')
+                        .upload(filePath, imageFile);
+
+                    if (uploadError) throw uploadError;
+
+                    // পাবলিক URL জেনারেট করা
+                    const { data: urlData } = _supabase.storage
+                        .from('employee-images')
+                        .getPublicUrl(filePath);
+                        
+                    imageUrl = urlData.publicUrl;
+                }
+
+                // ২. ডাটাবেজ টেবিলে এমপ্লয়ির সব তথ্য এবং ইমেজের লিঙ্ক ইনসার্ট করা
+                const { data, error } = await _supabase
+                    .from('igi_employees')
+                    .insert([
+                        { 
+                            name: name, 
+                            mobile: mobile, 
+                            email: email, 
+                            password: password, 
+                            image_url: imageUrl 
+                        }
+                    ]);
+
+                if (error) throw error;
+
+                // সফল হলে মেসেজ দেখানো এবং ফর্ম রিসেট করা
+                showStatus("Employee data saved successfully!", "success");
+                document.getElementById('employeeForm').reset();
+                document.getElementById('imagePreview').style.display = 'none';
+
+            } catch (err) {
+                console.error(err);
+                showStatus(err.message || "Something went wrong! Please try again.", "error");
+            } finally {
+                // বাটন আগের অবস্থায় ফিরিয়ে আনা
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Employee Data`;
+            }
+        }
+
+        // পেজ লোড হওয়ার সাথে সাথেই আগে সেশন চেক করবে
+        checkAdminAuthentication();
+    </script>
+</body>
+</html>
+
