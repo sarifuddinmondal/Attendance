@@ -56,8 +56,9 @@
 
         .brand-logo h2 {
             margin: 10px 0 5px 0;
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 700;
+            letter-spacing: 0.5px;
         }
 
         .brand-logo p {
@@ -171,6 +172,13 @@
             border: 1px solid #fca5a5;
             display: flex;
         }
+        
+        .footer-credit {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
@@ -179,9 +187,9 @@
         <div class="login-card">
             
             <div class="brand-logo">
-                <i class="fa-solid fa-user-tie"></i>
-                <h2>Employee Login</h2>
-                <p>Sign in using your mobile number & password</p>
+                <i class="fa-solid fa-building-shield"></i>
+                <h2>IGI SYSTEM</h2>
+                <p>Sign in to access your dashboard</p>
             </div>
 
             <div id="statusMessage" class="status-msg"></div>
@@ -189,10 +197,10 @@
             <form id="loginForm" onsubmit="handleEmployeeLogin(event)">
                 
                 <div class="form-group">
-                    <label>Mobile Number</label>
+                    <label>Email Address</label>
                     <div class="input-wrapper">
-                        <i class="fa-solid fa-phone"></i>
-                        <input type="tel" id="empMobile" class="form-control" placeholder="017XXXXXXXX" required>
+                        <i class="fa-solid fa-envelope"></i>
+                        <input type="email" id="empEmail" class="form-control" placeholder="example@gmail.com" required>
                     </div>
                 </div>
 
@@ -200,7 +208,7 @@
                     <label>Password</label>
                     <div class="input-wrapper">
                         <i class="fa-solid fa-lock"></i>
-                        <input type="password" id="empPassword" class="form-control" placeholder="••••••••" required>
+                        <input type="password" id="empPassword" class="form-control" placeholder="••••••" required>
                     </div>
                 </div>
 
@@ -211,6 +219,10 @@
 
             <div class="back-home">
                 <a href="./index.html"><i class="fa-solid fa-arrow-left"></i> Back to Homepage</a>
+            </div>
+            
+            <div class="footer-credit">
+                © 2026 IGI System. All Rights Reserved.
             </div>
 
         </div>
@@ -237,7 +249,7 @@
         async function handleEmployeeLogin(event) {
             event.preventDefault();
 
-            const mobile = document.getElementById('empMobile').value.trim();
+            const email = document.getElementById('empEmail').value.trim();
             const password = document.getElementById('empPassword').value.trim();
             const loginBtn = document.getElementById('loginBtn');
 
@@ -247,32 +259,32 @@
             document.getElementById('statusMessage').style.display = 'none';
 
             try {
-                // ১. ডাটাবেজের 'igi_employees' টেবিলে মোবাইল এবং পাসওয়ার্ড ম্যাচ করানো হচ্ছে
+                // ডাটাবেজের 'igi_employees' টেবিলে ইমেইল এবং পাসওয়ার্ড ম্যাচ করানো হচ্ছে
                 const { data: employee, error } = await _supabase
                     .from('igi_employees')
                     .select('*')
-                    .eq('mobile', mobile)
+                    .eq('email', email)
                     .eq('password', password)
                     .single(); // ১টি মাত্র ডাটা ম্যাচ করবে
 
                 if (error || !employee) {
-                    throw new Error("Invalid Mobile Number or Password!");
+                    throw new Error("Wrong Email or Password! Please check again.");
                 }
 
-                // ২. লগইন সফল হলে মেসেজ দেখানো
+                // লগইন সফল হলে মেসেজ দেখানো
                 showStatus("Login successful! Redirecting...", "success");
 
-                // এমপ্লয়ির তথ্য ব্রাউজারের লোকাল স্টোরেজে সাময়িকভাবে সেভ রাখা (ভবিষ্যতে প্রোফাইল দেখানোর জন্য)
+                // এমপ্লয়ির তথ্য ব্রাউজারের লোকাল স্টোরেজে সেভ রাখা (ড্যাশবোর্ডে প্রোফাইল দেখানোর জন্য)
                 localStorage.setItem('current_employee', JSON.stringify(employee));
 
-                // ৩. ৩ সেকেন্ড পর ড্যাশবোর্ড বা হোমপেজে রিডাইরেক্ট করা
+                // ১.৫ সেকেন্ড পর ড্যাশবোর্ডে রিডাইরেক্ট করা
                 setTimeout(() => {
-                    window.location.href = "./index.html"; // আপনার প্রয়োজন অনুযায়ী পেজ লিংক পরিবর্তন করতে পারেন (যেমন: ./dashboard.html)
+                    window.location.href = "./index.html";
                 }, 1500);
 
             } catch (err) {
                 console.error(err);
-                showStatus(err.message || "Login failed! Please check again.", "error");
+                showStatus(err.message || "Wrong Email or Password! Please check again.", "error");
                 loginBtn.disabled = false;
                 loginBtn.innerHTML = `<i class="fa-solid fa-right-from-bracket"></i> Login`;
             }
