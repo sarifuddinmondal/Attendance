@@ -228,7 +228,7 @@
                 if (error) throw error;
 
                 // পাসওয়ার্ড ঠিক থাকলে সরাসরি মূল ড্যাশবোর্ডে রিডাইরেক্ট করবে
-                window.location.href = "./index.html"; 
+                window.location.href = "./admin.html"; 
 
             } catch (err) {
                 // পাসওয়ার্ড বা ইমেইল ভুল হলে এখানে ক্যাচ করবে এবং লাল বক্সটি শো করবে
@@ -254,7 +254,7 @@
         async function checkExistingSession() {
             const { data: { session } } = await _supabase.auth.getSession();
             if (session) {
-                window.location.href = "./index.html";
+                window.location.href = "./admin.html";
             }
         }
         checkExistingSession();
