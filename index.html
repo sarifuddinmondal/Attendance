@@ -23,7 +23,7 @@
             color: var(--text-main);
             margin: 0;
             padding: 0;
-            display: none; /* সেশন চেক হওয়ার আগে স্ক্রিন হাইড রাখার জন্য */
+            display: none; /* সেশন ভেরিফাই হওয়ার পর স্ক্রিন শো হবে */
         }
 
         header {
@@ -198,21 +198,7 @@
             box-sizing: border-box;
         }
 
-        /* Print Styles */
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-            #printSection, #printSection * {
-                visibility: visible;
-            }
-            #printSection {
-                position: absolute;
-                left: 0; top: 0; width: 100%;
-            }
-        }
-        
-        /* 👤 Header Right Side Profile UX UI Elements */
+        /* 👤 Header UX Elements */
         .header-right-panel {
             display: flex;
             align-items: center;
@@ -230,8 +216,8 @@
         }
 
         .profile-bubble img {
-            width: 35px;
-            height: 35px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             object-fit: cover;
             border: 1.5px solid var(--accent);
@@ -239,15 +225,15 @@
         }
 
         .profile-bubble .no-img-icon {
-            width: 35px;
-            height: 35px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             background: #e2e8f0;
             color: var(--text-muted);
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 15px;
+            font-size: 14px;
             border: 1.5px solid var(--accent);
         }
 
@@ -257,7 +243,7 @@
         }
 
         .profile-text .user-name {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: #ffffff;
         }
@@ -286,6 +272,20 @@
             background: var(--danger);
             border-color: var(--danger);
         }
+
+        /* Print Styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printSection, #printSection * {
+                visibility: visible;
+            }
+            #printSection {
+                position: absolute;
+                left: 0; top: 0; width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -296,9 +296,9 @@
             <h1>IGI-SARIF UDDIN MONDAL</h1>
         </div>
         
-        <!-- ডানদিকের প্রোফাইল ও লগআউট কন্টেইনার প্যানেল -->
         <div class="header-right-panel">
             <div id="userProfileArea"></div>
+            <div style="font-size: 12px; font-weight: 600;">26 Days Base</div>
             <button class="logout-action-btn" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
         </div>
     </header>
@@ -416,9 +416,6 @@
             window.location.href = "./employee-login.html";
         }
 
-        // স্ক্রিপ্ট চালুর শুরুতেই সেশন চেক রান করা হবে
-        checkUserAuthentication();
-
         const SUPABASE_URL = "https://vkwxheddyagpjbsrovgh.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrd3hoZWRkeWFncGpic3JvdmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNDM2NjEsImV4cCI6MjA5MDcxOTY2MX0.KN_JLY2owScvkGVy2inJIkEzW82_Qb2a1cavcRJFzlA";
         
@@ -519,11 +516,7 @@
                 
             } catch (err) {
                 console.error(err.message);
-                document.getElementById('totalDays').innerText = "Error";
-                document.getElementById('totalLeaves').innerText = "Error";
-                document.getElementById('totalDutyHours').innerText = "Error";
-                document.getElementById('totalOtHours').innerText = "Error";
-                alert("Database connection failed. Please check your internet or Supabase tables.");
+                alert("Connection failed.");
             }
         }
 
@@ -555,11 +548,6 @@
                 return;
             }
 
-            if (!globalRecords || globalRecords.length === 0) {
-                alert("No records loaded from database yet!");
-                return;
-            }
-
             const filtered = globalRecords.filter(r => r.date >= start && r.date <= end);
 
             if(filtered.length === 0) {
@@ -585,4 +573,62 @@
 
                 tableRows += `
                     <tr>
-                        <td style="border:1px so
+                        <td style="border:1px solid #ddd; padding:8px;">${formattedDate}</td>
+                        <td style="border:1px solid #ddd; padding:8px; ${r.shift === 'Absent' ? 'color: red; font-weight: bold;' : ''}">${r.shift}</td>
+                        <td style="border:1px solid #ddd; padding:8px;">${displayStart}</td>
+                        <td style="border:1px solid #ddd; padding:8px;">${displayEnd}</td>
+                        <td style="border:1px solid #ddd; padding:8px;">${r.reg_hours} hrs</td>
+                        <td style="border:1px solid #ddd; padding:8px;">${r.ot_hours} hrs</td>
+                    </tr>
+                `;
+            });
+
+            let baseSalaryMoney = pDays * PER_DAY_SALARY;
+            let otMoney = pOtHours * PER_HOUR_RATE;
+            let totalMoney = baseSalaryMoney + otMoney;
+
+            const printSection = document.getElementById('printSection');
+            printSection.innerHTML = `
+                <div style="padding:20px; font-family:sans-serif; color:#1f2937;">
+                    <h2 style="color:#1e3a8a; text-align:center; margin-bottom:5px;">IGI SYSTEM REPORT</h2>
+                    <p style="text-align:center; margin-top:0; color:#6b7280;">Date Range: ${formatToDDMMYY(start)} to ${formatToDDMMYY(end)}</p>
+                    <hr style="border:1px solid #1e3a8a; margin-bottom:20px;">
+                    
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:25px;">
+                        <thead>
+                            <tr style="background-color:#1e3a8a; color:white; text-align:left;">
+                                <th style="padding:10px; border:1px solid #ddd;">Date</th>
+                                <th style="padding:10px; border:1px solid #ddd;">Shift</th>
+                                <th style="padding:10px; border:1px solid #ddd;">Start Time</th>
+                                <th style="padding:10px; border:1px solid #ddd;">End Time</th>
+                                <th style="padding:10px; border:1px solid #ddd;">Regular Hours</th>
+                                <th style="padding:10px; border:1px solid #ddd;">OT Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+
+                    <div style="background:#f4f6f9; padding:15px; border-radius:8px; width:60%; margin-left:auto;">
+                        <h4 style="margin:0 0 10px 0; color:#1e3a8a;">Summary Statement:</h4>
+                        <p style="margin:4px 0; font-size:14px;"><b>Total Active Days:</b> ${pDays} Days</p>
+                        <p style="margin:4px 0; font-size:14px; color:#ef4444;"><b>Total Leaves (Absent):</b> ${pLeaves} Days</p>
+                        <p style="margin:4px 0; font-size:14px;"><b>Total Duty Hours:</b> ${pRegHours} hrs</p>
+                        <p style="margin:4px 0; font-size:14px;"><b>Total OT Hours:</b> ${pOtHours} hrs</p>
+                        <p style="margin:4px 0; font-size:14px;"><b>Total OT Money:</b> ₹${otMoney.toFixed(2)}</p>
+                        <hr style="border-top:1px dashed #ccc;">
+                        <p style="margin:4px 0; font-size:16px; color:#10b981;"><b>Gross Total (Salary+OT):</b> ₹${totalMoney.toFixed(2)}</p>
+                    </div>
+                </div>
+            `;
+
+            closeReportModal();
+            window.print();
+        }
+
+        // স্ক্রিপ্ট লোড হওয়ার সাথে সাথে অথেনটিকেশন চেক রান করবে
+        checkUserAuthentication();
+    </script>
+</body>
+</html>
